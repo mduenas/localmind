@@ -1,0 +1,101 @@
+CREATE TABLE tasks (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    original_text TEXT NOT NULL,
+    due_date INTEGER,
+    due_time INTEGER,
+    priority INTEGER NOT NULL DEFAULT 1,
+    status INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    completed_at INTEGER,
+    parsing_confidence REAL
+);
+
+CREATE TABLE tags (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    color INTEGER
+);
+
+CREATE TABLE task_tags (
+    task_id TEXT NOT NULL,
+    tag_id TEXT NOT NULL,
+    PRIMARY KEY (task_id, tag_id),
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+CREATE TABLE captures (
+    id TEXT NOT NULL PRIMARY KEY,
+    raw_text TEXT NOT NULL,
+    audio_path TEXT,
+    created_at INTEGER NOT NULL,
+    processed INTEGER NOT NULL DEFAULT 0
+);
+
+-- Indexes
+CREATE INDEX idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_created ON tasks(created_at DESC);
+
+-- Task queries
+getTodayTasks:
+SELECT * FROM tasks
+WHERE (due_date = ? OR (due_date < ? AND status = 0)) AND status != 2
+ORDER BY priority DESC, due_time ASC;
+
+getUpcomingTasks:
+SELECT * FROM tasks
+WHERE due_date > ? AND due_date <= ? AND status != 2
+ORDER BY due_date ASC, priority DESC;
+
+getAllActiveTasks:
+SELECT * FROM tasks WHERE status != 2 ORDER BY created_at DESC;
+
+getTaskById:
+SELECT * FROM tasks WHERE id = ?;
+
+insertTask:
+INSERT INTO tasks (id, title, original_text, due_date, due_time, priority, status, created_at, updated_at, parsing_confidence)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateTask:
+UPDATE tasks SET title = ?, due_date = ?, due_time = ?, priority = ?, updated_at = ? WHERE id = ?;
+
+updateTaskStatus:
+UPDATE tasks SET status = ?, updated_at = ?, completed_at = ? WHERE id = ?;
+
+deleteTask:
+DELETE FROM tasks WHERE id = ?;
+
+searchTasks:
+SELECT * FROM tasks WHERE title LIKE ? OR original_text LIKE ? ORDER BY created_at DESC;
+
+-- Tag queries
+getAllTags:
+SELECT * FROM tags ORDER BY name;
+
+insertTag:
+INSERT OR IGNORE INTO tags (id, name, color) VALUES (?, ?, ?);
+
+getTagsForTask:
+SELECT tags.* FROM tags
+INNER JOIN task_tags ON tags.id = task_tags.tag_id
+WHERE task_tags.task_id = ?;
+
+addTagToTask:
+INSERT OR IGNORE INTO task_tags (task_id, tag_id) VALUES (?, ?);
+
+removeTagFromTask:
+DELETE FROM task_tags WHERE task_id = ? AND tag_id = ?;
+
+-- Capture queries
+insertCapture:
+INSERT INTO captures (id, raw_text, audio_path, created_at, processed) VALUES (?, ?, ?, ?, ?);
+
+getUnprocessedCaptures:
+SELECT * FROM captures WHERE processed = 0 ORDER BY created_at ASC;
+
+markCaptureProcessed:
+UPDATE captures SET processed = 1 WHERE id = ?;
