@@ -1,7 +1,7 @@
 package com.markduenas.localmind.ai
 
 import com.markduenas.localmind.domain.model.Priority
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime

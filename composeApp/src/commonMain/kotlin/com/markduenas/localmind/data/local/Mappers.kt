@@ -8,7 +8,7 @@ import com.markduenas.localmind.domain.model.Priority
 import com.markduenas.localmind.domain.model.Tag
 import com.markduenas.localmind.domain.model.Task
 import com.markduenas.localmind.domain.model.TaskStatus
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 

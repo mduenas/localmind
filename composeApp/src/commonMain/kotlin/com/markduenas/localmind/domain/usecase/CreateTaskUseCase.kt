@@ -5,7 +5,7 @@ import com.markduenas.localmind.data.repository.TaskRepository
 import com.markduenas.localmind.domain.model.ParsedTask
 import com.markduenas.localmind.domain.model.Task
 import com.markduenas.localmind.domain.model.TaskStatus
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 class CreateTaskUseCase(
     private val taskRepository: TaskRepository

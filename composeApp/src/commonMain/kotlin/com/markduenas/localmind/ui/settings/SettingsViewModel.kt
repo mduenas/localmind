@@ -5,13 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.markduenas.localmind.ai.AIConfig
 import com.markduenas.localmind.ai.ModelManager
 import com.markduenas.localmind.data.repository.SettingsRepository
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.markduenas.localmind.platform.NotificationHelper
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 
 data class SettingsUiState(
     val llmEnabled: Boolean = false,
@@ -28,6 +26,7 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val modelManager: ModelManager,
+    private val notificationHelper: NotificationHelper,
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -57,6 +56,11 @@ class SettingsViewModel(
 
     fun setNotificationsEnabled(enabled: Boolean) {
         settingsRepository.setNotificationsEnabled(enabled)
+        if (enabled) {
+            notificationHelper.scheduleDailySummary()
+        } else {
+            notificationHelper.cancelAll()
+        }
     }
 
     fun deleteModel(slug: String) {

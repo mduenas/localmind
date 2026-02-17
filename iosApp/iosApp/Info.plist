@@ -4,5 +4,7 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>LocalMind needs microphone access to capture voice notes for task creation.</string>
 </dict>
 </plist>

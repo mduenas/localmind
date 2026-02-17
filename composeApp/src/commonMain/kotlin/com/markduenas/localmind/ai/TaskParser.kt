@@ -1,7 +1,7 @@
 package com.markduenas.localmind.ai
 
 import com.markduenas.localmind.domain.model.ParsedTask
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 

@@ -40,6 +40,8 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
             implementation(libs.sqldelight.android.driver)
+            implementation(libs.androidx.work.runtime)
+            implementation(libs.androidx.glance.appwidget)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

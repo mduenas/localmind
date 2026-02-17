@@ -1,6 +1,6 @@
 package com.markduenas.localmind.domain.model
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class Capture(
     val id: String,
