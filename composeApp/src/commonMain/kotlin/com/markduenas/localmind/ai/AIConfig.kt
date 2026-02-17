@@ -16,4 +16,11 @@ object AIConfig {
     // Performance budgets
     const val LLM_TIMEOUT_MS = 10_000L
     const val STT_TIMEOUT_MS = 10_000L
+
+    // Approximate download sizes for user-facing display
+    val MODEL_SIZES = mapOf(
+        DEFAULT_LLM_MODEL to "~400 MB",
+        FALLBACK_LLM_MODEL to "~200 MB",
+        DEFAULT_STT_MODEL to "~75 MB",
+    )
 }

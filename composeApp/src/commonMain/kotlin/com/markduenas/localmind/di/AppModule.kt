@@ -51,7 +51,13 @@ val appModule = module {
     factoryOf(::GetUpcomingTasksUseCase)
     factoryOf(::CreateTaskUseCase)
     factoryOf(::CompleteTaskUseCase)
-    factory { ParseCaptureUseCase(get(), get()) }
+    factory {
+        ParseCaptureUseCase(
+            taskParser = get(),
+            ruleBasedParser = get(),
+            isLLMEnabled = { get<SettingsRepository>().llmEnabled.value },
+        )
+    }
 
     // ViewModels
     viewModelOf(::CaptureViewModel)

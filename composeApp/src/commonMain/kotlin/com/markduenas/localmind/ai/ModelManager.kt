@@ -1,5 +1,6 @@
 package com.markduenas.localmind.ai
 
+import com.cactus.CactusLM
 import com.cactus.CactusModelManager
 
 class ModelManager {
@@ -16,6 +17,16 @@ class ModelManager {
         if (isModelDownloaded(slug)) return true
         // Model needs to be downloaded — caller should trigger download with progress UI
         return false
+    }
+
+    /**
+     * Downloads a model by creating a temporary CactusLM instance.
+     * Keeps download separate from LLM initialization so the caller
+     * can drive progress UI without committing to a loaded model.
+     */
+    suspend fun downloadModel(slug: String) {
+        val lm = CactusLM()
+        lm.downloadModel(slug)
     }
 
     fun deleteModel(slug: String): Boolean {
