@@ -20,6 +20,7 @@ data class TaskListUiState(
     val upcomingTasks: List<Task> = emptyList(),
     val allTasks: List<Task> = emptyList(),
     val isLoading: Boolean = true,
+    val error: String? = null,
 )
 
 class TaskListViewModel(
@@ -39,21 +40,21 @@ class TaskListViewModel(
     private fun loadTasks() {
         viewModelScope.launch {
             getTodayTasksUseCase()
-                .catch { /* silently handle errors for now */ }
+                .catch { e -> _uiState.update { it.copy(error = e.message, isLoading = false) } }
                 .collect { tasks ->
                     _uiState.update { it.copy(todayTasks = tasks, isLoading = false) }
                 }
         }
         viewModelScope.launch {
             getUpcomingTasksUseCase()
-                .catch { }
+                .catch { e -> _uiState.update { it.copy(error = e.message) } }
                 .collect { tasks ->
                     _uiState.update { it.copy(upcomingTasks = tasks) }
                 }
         }
         viewModelScope.launch {
             taskRepository.getAllTasks()
-                .catch { }
+                .catch { e -> _uiState.update { it.copy(error = e.message) } }
                 .collect { tasks ->
                     _uiState.update { it.copy(allTasks = tasks) }
                 }
@@ -62,22 +63,34 @@ class TaskListViewModel(
 
     fun toggleComplete(taskId: String) {
         viewModelScope.launch {
-            val task = _uiState.value.allTasks.find { it.id == taskId }
-                ?: _uiState.value.todayTasks.find { it.id == taskId }
-                ?: _uiState.value.upcomingTasks.find { it.id == taskId }
-            if (task != null) {
-                if (task.status == TaskStatus.COMPLETED) {
-                    taskRepository.updateTaskStatus(taskId, TaskStatus.PENDING)
-                } else {
-                    completeTaskUseCase(taskId)
+            try {
+                val task = _uiState.value.allTasks.find { it.id == taskId }
+                    ?: _uiState.value.todayTasks.find { it.id == taskId }
+                    ?: _uiState.value.upcomingTasks.find { it.id == taskId }
+                if (task != null) {
+                    if (task.status == TaskStatus.COMPLETED) {
+                        taskRepository.updateTaskStatus(taskId, TaskStatus.PENDING)
+                    } else {
+                        completeTaskUseCase(taskId)
+                    }
                 }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message) }
             }
         }
     }
 
     fun deleteTask(taskId: String) {
         viewModelScope.launch {
-            taskRepository.deleteTask(taskId)
+            try {
+                taskRepository.deleteTask(taskId)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message) }
+            }
         }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 }

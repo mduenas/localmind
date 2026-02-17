@@ -86,8 +86,13 @@ fun ParseReviewScreen(
                         Spacer(Modifier.height(8.dp))
                         Text(state.error ?: "")
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = onDiscard) {
-                            Text("Go Back")
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedButton(onClick = onDiscard) {
+                                Text("Go Back")
+                            }
+                            Button(onClick = { viewModel.retryParse() }) {
+                                Text("Retry")
+                            }
                         }
                     }
                 }

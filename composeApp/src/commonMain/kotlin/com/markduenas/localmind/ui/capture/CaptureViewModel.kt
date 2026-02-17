@@ -10,6 +10,7 @@ data class CaptureUiState(
     val inputText: String = "",
     val isRecording: Boolean = false,
     val isTranscribing: Boolean = false,
+    val error: String? = null,
 )
 
 class CaptureViewModel : ViewModel() {
@@ -30,5 +31,9 @@ class CaptureViewModel : ViewModel() {
     fun toggleRecording() {
         _uiState.update { it.copy(isRecording = !it.isRecording) }
         // TODO: Integrate STTService for actual recording/transcription
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 }

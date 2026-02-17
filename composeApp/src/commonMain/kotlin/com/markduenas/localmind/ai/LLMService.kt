@@ -4,6 +4,7 @@ import com.cactus.ChatMessage
 import com.cactus.CactusCompletionParams
 import com.cactus.CactusInitParams
 import com.cactus.CactusLM
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
@@ -43,21 +44,31 @@ class LLMService(
             ChatMessage(content = userPrompt, role = "user")
         )
 
-        val result = withTimeout(AIConfig.LLM_TIMEOUT_MS) {
-            lm.generateCompletion(
-                messages = messages,
-                params = CactusCompletionParams(
-                    maxTokens = AIConfig.MAX_TOKENS,
-                    temperature = AIConfig.TEMPERATURE
-                )
-            )
+        var lastException: Exception? = null
+        repeat(2) { attempt ->
+            try {
+                val result = withTimeout(AIConfig.LLM_TIMEOUT_MS) {
+                    lm.generateCompletion(
+                        messages = messages,
+                        params = CactusCompletionParams(
+                            maxTokens = AIConfig.MAX_TOKENS,
+                            temperature = AIConfig.TEMPERATURE
+                        )
+                    )
+                }
+
+                if (result == null || !result.success) {
+                    throw LLMException("LLM completion failed")
+                }
+
+                return result.response ?: throw LLMException("LLM returned empty response")
+            } catch (e: Exception) {
+                lastException = e
+                if (attempt < 1) delay(500)
+            }
         }
 
-        if (result == null || !result.success) {
-            throw LLMException("LLM completion failed")
-        }
-
-        return result.response ?: throw LLMException("LLM returned empty response")
+        throw lastException ?: LLMException("LLM completion failed after retries")
     }
 
     fun unload() {

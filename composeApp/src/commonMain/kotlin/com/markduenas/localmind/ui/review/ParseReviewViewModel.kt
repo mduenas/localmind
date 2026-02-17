@@ -66,6 +66,10 @@ class ParseReviewViewModel(
         }
     }
 
+    fun retryParse() {
+        parseCapture(_uiState.value.originalText)
+    }
+
     fun onTitleChanged(title: String) {
         _uiState.update { it.copy(editedTitle = title) }
     }

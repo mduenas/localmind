@@ -6,10 +6,12 @@ import com.markduenas.localmind.ai.AIConfig
 import com.markduenas.localmind.ai.ModelManager
 import com.markduenas.localmind.data.repository.SettingsRepository
 import com.markduenas.localmind.platform.NotificationHelper
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 
 data class SettingsUiState(
     val llmEnabled: Boolean = false,
@@ -21,6 +23,7 @@ data class SettingsUiState(
         AIConfig.FALLBACK_LLM_MODEL,
         AIConfig.DEFAULT_STT_MODEL,
     ),
+    val error: String? = null,
 )
 
 class SettingsViewModel(
@@ -29,16 +32,20 @@ class SettingsViewModel(
     private val notificationHelper: NotificationHelper,
 ) : ViewModel() {
 
+    private val _error = MutableStateFlow<String?>(null)
+
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.llmEnabled,
         settingsRepository.encryptionEnabled,
         settingsRepository.notificationsEnabled,
-    ) { llm, encryption, notifications ->
+        _error,
+    ) { llm, encryption, notifications, error ->
         SettingsUiState(
             llmEnabled = llm,
             encryptionEnabled = encryption,
             notificationsEnabled = notifications,
             downloadedModels = modelManager.getDownloadedModels(),
+            error = error,
         )
     }.stateIn(
         viewModelScope,
@@ -56,14 +63,26 @@ class SettingsViewModel(
 
     fun setNotificationsEnabled(enabled: Boolean) {
         settingsRepository.setNotificationsEnabled(enabled)
-        if (enabled) {
-            notificationHelper.scheduleDailySummary()
-        } else {
-            notificationHelper.cancelAll()
+        try {
+            if (enabled) {
+                notificationHelper.scheduleDailySummary()
+            } else {
+                notificationHelper.cancelAll()
+            }
+        } catch (e: Exception) {
+            _error.update { e.message }
         }
     }
 
     fun deleteModel(slug: String) {
-        modelManager.deleteModel(slug)
+        try {
+            modelManager.deleteModel(slug)
+        } catch (e: Exception) {
+            _error.update { e.message }
+        }
+    }
+
+    fun clearError() {
+        _error.update { null }
     }
 }

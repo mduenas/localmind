@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.markduenas.localmind.domain.model.Task
@@ -30,10 +31,12 @@ fun TaskSection(
             modifier = Modifier.padding(horizontal = 16.dp),
         ) {
             tasks.forEach { task ->
-                TaskCard(
-                    task = task,
-                    onToggleComplete = onToggleComplete,
-                )
+                key(task.id) {
+                    TaskCard(
+                        task = task,
+                        onToggleComplete = onToggleComplete,
+                    )
+                }
             }
         }
     }

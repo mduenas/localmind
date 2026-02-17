@@ -3,6 +3,7 @@ package com.markduenas.localmind.ai
 import com.cactus.CactusInitParams
 import com.cactus.CactusSTT
 import com.cactus.CactusTranscriptionParams
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
@@ -29,15 +30,25 @@ class STTService(
     suspend fun transcribe(audioFilePath: String): String {
         val stt = cactusSTT ?: throw IllegalStateException("STT not initialized — call initialize() first")
 
-        val result = withTimeout(AIConfig.STT_TIMEOUT_MS) {
-            stt.transcribe(filePath = audioFilePath)
+        var lastException: Exception? = null
+        repeat(2) { attempt ->
+            try {
+                val result = withTimeout(AIConfig.STT_TIMEOUT_MS) {
+                    stt.transcribe(filePath = audioFilePath)
+                }
+
+                if (result == null || !result.success) {
+                    throw STTException(result?.errorMessage ?: "Transcription failed")
+                }
+
+                return result.text?.trim() ?: throw STTException("Transcription returned empty text")
+            } catch (e: Exception) {
+                lastException = e
+                if (attempt < 1) delay(500)
+            }
         }
 
-        if (result == null || !result.success) {
-            throw STTException(result?.errorMessage ?: "Transcription failed")
-        }
-
-        return result.text?.trim() ?: throw STTException("Transcription returned empty text")
+        throw lastException ?: STTException("Transcription failed after retries")
     }
 
     fun reset() {

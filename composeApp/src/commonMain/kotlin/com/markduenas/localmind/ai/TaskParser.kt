@@ -5,10 +5,10 @@ import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 
-class TaskParser(
+open class TaskParser(
     private val llmService: LLMService
 ) {
-    suspend fun parse(rawText: String): ParsedTask {
+    open suspend fun parse(rawText: String): ParsedTask {
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
         val userPrompt = Prompts.buildUserPrompt(rawText, today)
         val response = llmService.generateCompletion(

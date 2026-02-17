@@ -19,7 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,9 @@ fun TaskCard(
             Checkbox(
                 checked = isCompleted,
                 onCheckedChange = { onToggleComplete(task.id) },
+                modifier = Modifier.semantics {
+                    contentDescription = if (isCompleted) "Undo complete ${task.title}" else "Complete ${task.title}"
+                },
             )
             Spacer(Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -115,6 +119,7 @@ private fun PriorityIndicator(priority: Priority) {
 }
 
 private fun formatDate(date: LocalDate, time: LocalTime?): String {
+    @Suppress("DEPRECATION")
     val dateStr = "${date.monthNumber}/${date.dayOfMonth}"
     return if (time != null) {
         val hour = if (time.hour == 0) 12 else if (time.hour > 12) time.hour - 12 else time.hour
