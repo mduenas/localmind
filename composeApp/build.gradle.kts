@@ -37,6 +37,9 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
+            linkerOpts("-framework", "CoreML")
+            linkerOpts("-framework", "Accelerate")
+            linkerOpts("-framework", "AVFoundation")
         }
     }
 
