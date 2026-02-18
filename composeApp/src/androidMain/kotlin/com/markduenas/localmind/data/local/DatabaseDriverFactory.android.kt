@@ -29,9 +29,12 @@ actual class DatabaseDriverFactory(
         Log.i("DatabaseDriverFactory", "Migrating unencrypted database to SQLCipher")
         val tempFile = File(dbFile.parentFile, "localmind_encrypted.db")
         try {
-            val db = android.database.sqlite.SQLiteDatabase.openDatabase(
-                dbFile.absolutePath, null, android.database.sqlite.SQLiteDatabase.OPEN_READWRITE
+            // Open the unencrypted DB using SQLCipher with an empty passphrase
+            val db = net.zetetic.database.sqlcipher.SQLiteDatabase.openDatabase(
+                dbFile.absolutePath, "", null,
+                net.zetetic.database.sqlcipher.SQLiteDatabase.OPEN_READWRITE, null, null
             )
+            // Verify we can read it
             db.rawQuery("SELECT count(*) FROM sqlite_master;", null).use { it.moveToFirst() }
 
             val escapedPassphrase = passphrase.replace("'", "''")
@@ -44,8 +47,10 @@ actual class DatabaseDriverFactory(
             tempFile.renameTo(dbFile)
             Log.i("DatabaseDriverFactory", "Migration to encrypted database complete")
         } catch (e: Exception) {
-            Log.e("DatabaseDriverFactory", "Migration failed, keeping original", e)
+            Log.e("DatabaseDriverFactory", "Migration failed, deleting unencrypted DB", e)
+            // If migration fails, remove the old unencrypted DB so the app can start fresh
             tempFile.delete()
+            dbFile.delete()
         }
     }
 
