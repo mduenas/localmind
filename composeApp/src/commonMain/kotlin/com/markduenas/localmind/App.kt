@@ -6,6 +6,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.markduenas.localmind.ui.components.FloatingCaptureButton
@@ -20,15 +21,13 @@ fun App() {
     LocalMindTheme {
         val navController = rememberNavController()
         val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentRoute = navBackStackEntry?.destination?.route
-
-        val isBottomNavScreen = currentRoute != null && bottomNavItems.any { item ->
-            currentRoute.contains(item.screen::class.qualifiedName ?: "")
-        }
+        val destination = navBackStackEntry?.destination
 
         val currentScreen = bottomNavItems.find { item ->
-            currentRoute?.contains(item.screen::class.qualifiedName ?: "") == true
+            destination?.hasRoute(item.screen::class) == true
         }?.screen
+
+        val isBottomNavScreen = currentScreen != null
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
