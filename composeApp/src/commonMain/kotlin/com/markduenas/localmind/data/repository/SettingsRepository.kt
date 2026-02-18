@@ -11,20 +11,12 @@ class SettingsRepository {
     private val _llmEnabled = MutableStateFlow(false)
     val llmEnabled: StateFlow<Boolean> = _llmEnabled.asStateFlow()
 
-    private val _encryptionEnabled = MutableStateFlow(false)
-    val encryptionEnabled: StateFlow<Boolean> = _encryptionEnabled.asStateFlow()
-
     private val _notificationsEnabled = MutableStateFlow(true)
     val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
 
     fun setLlmEnabled(enabled: Boolean) {
         _llmEnabled.value = enabled
         store["llm_enabled"] = enabled.toString()
-    }
-
-    fun setEncryptionEnabled(enabled: Boolean) {
-        _encryptionEnabled.value = enabled
-        store["encryption_enabled"] = enabled.toString()
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {

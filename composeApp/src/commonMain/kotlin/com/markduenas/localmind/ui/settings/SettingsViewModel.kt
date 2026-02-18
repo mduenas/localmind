@@ -25,7 +25,6 @@ sealed interface ModelDownloadState {
 
 data class SettingsUiState(
     val llmEnabled: Boolean = false,
-    val encryptionEnabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
     val downloadedModels: List<String> = emptyList(),
     val availableModels: List<String> = listOf(
@@ -48,19 +47,12 @@ class SettingsViewModel(
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.llmEnabled,
-        settingsRepository.encryptionEnabled,
         settingsRepository.notificationsEnabled,
         _error,
         _downloadState,
-    ) { values ->
-        val llm = values[0] as Boolean
-        val encryption = values[1] as Boolean
-        val notifications = values[2] as Boolean
-        val error = values[3] as String?
-        val downloadState = values[4] as ModelDownloadState
+    ) { llm, notifications, error, downloadState ->
         SettingsUiState(
             llmEnabled = llm,
-            encryptionEnabled = encryption,
             notificationsEnabled = notifications,
             downloadedModels = modelManager.getDownloadedModels(),
             downloadState = downloadState,
@@ -127,10 +119,6 @@ class SettingsViewModel(
 
     fun dismissDownloadError() {
         _downloadState.value = ModelDownloadState.Idle
-    }
-
-    fun setEncryptionEnabled(enabled: Boolean) {
-        settingsRepository.setEncryptionEnabled(enabled)
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {

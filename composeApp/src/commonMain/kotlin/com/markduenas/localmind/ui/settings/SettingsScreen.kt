@@ -81,13 +81,6 @@ fun SettingsScreen(
 
         HorizontalDivider()
 
-        SecuritySection(
-            encryptionEnabled = state.encryptionEnabled,
-            onEncryptionChanged = viewModel::setEncryptionEnabled,
-        )
-
-        HorizontalDivider()
-
         NotificationSection(
             notificationsEnabled = state.notificationsEnabled,
             onNotificationsChanged = viewModel::setNotificationsEnabled,

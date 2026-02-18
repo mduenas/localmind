@@ -25,6 +25,13 @@
 # Keep SQLDelight generated code
 -keep class com.markduenas.localmind.data.local.** { *; }
 
+# Google Tink / security-crypto (Error Prone annotations not in runtime classpath)
+-dontwarn com.google.errorprone.annotations.**
+
+# Keep SQLCipher
+-keep class net.zetetic.database.** { *; }
+-dontwarn net.zetetic.database.**
+
 # Keep Cactus SDK
 -keep class com.cactuscompute.** { *; }
 -dontwarn com.cactuscompute.**
