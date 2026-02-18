@@ -16,8 +16,8 @@ LocalMind is a Kotlin Multiplatform (KMP) cross-platform productivity applicatio
 # Android debug build
 ./gradlew :composeApp:assembleDebug
 
-# Android release build
-./gradlew :composeApp:assemble
+# Android release bundle (for Play Store upload)
+./gradlew :composeApp:bundleRelease
 
 # Run all tests
 ./gradlew :composeApp:test
@@ -114,9 +114,19 @@ CactusContextInitializer.initialize(this)
 ```
 
 ### SQLCipher Integration
-- Disable default SQLite linking: `linkSqlite = false` in SQLDelight config
-- iOS: Add SQLCipher via CocoaPods with `isStatic = true`
-- Never hardcode encryption keys—use platform Keystore
+- Encryption is **always on** — there is no user-facing toggle
+- `linkSqlite = false` in SQLDelight config so SQLCipher provides the SQLite implementation
+- iOS: SQLCipher added via CocoaPods with `isStatic = true`
+- Android: `net.zetetic:sqlcipher-android` + `androidx.security:security-crypto`
+- Encryption keys are generated once per install and stored in platform secure storage:
+  - Android: `EncryptedSharedPreferences` (backed by Android Keystore)
+  - iOS: Keychain with `kSecAttrAccessibleAfterFirstUnlock`
+- Existing unencrypted databases are automatically migrated on first launch
+- Key loss on app data clear is expected — privacy-first full reset
+
+### Encryption Export Compliance
+- **Google Play Store:** No encryption declarations required
+- **Apple App Store:** `ITSAppUsesNonExemptEncryption = false` is set in `Info.plist`, which tells Apple the encryption is exempt from export compliance documentation. This is valid because SQLCipher is used solely for local data-at-rest protection (exempt under EAR 740.17(b)(1)), not for communications or external authentication
 
 ### Performance Targets
 - App cold start: < 2s
