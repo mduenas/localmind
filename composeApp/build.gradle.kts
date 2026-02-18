@@ -13,7 +13,6 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.sqldelight)
-    kotlin("native.cocoapods")
 }
 
 sqldelight {
@@ -32,23 +31,16 @@ kotlin {
         }
     }
 
-    iosArm64()
-    iosSimulatorArm64()
-
-    cocoapods {
-        summary = "LocalMind shared module"
-        homepage = "https://github.com/markduenas/localmind"
-        version = "1.0"
-        ios.deploymentTarget = "15.0"
-        podfile = project.file("../iosApp/Podfile")
-        framework {
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
-            linkerOpts("-framework", "CoreML", "-framework", "Accelerate", "-framework", "AVFoundation")
-        }
-        pod("SQLCipher") {
-            version = "~> 4.6"
-            linkOnly = true
+            linkerOpts("-framework", "CoreML")
+            linkerOpts("-framework", "Accelerate")
+            linkerOpts("-framework", "AVFoundation")
         }
     }
 
@@ -112,8 +104,8 @@ android {
         applicationId = "com.markduenas.localmind"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 4
-        versionName = "1.0.3"
+        versionCode = 5
+        versionName = "1.0.4"
     }
 
     signingConfigs {

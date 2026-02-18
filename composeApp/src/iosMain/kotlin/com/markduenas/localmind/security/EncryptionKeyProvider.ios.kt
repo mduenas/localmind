@@ -8,6 +8,8 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.refTo
 import kotlinx.cinterop.value
 import platform.CoreFoundation.CFDictionaryRef
+import platform.CoreFoundation.CFTypeRef
+import platform.CoreFoundation.CFTypeRefVar
 import platform.Foundation.CFBridgingRelease
 import platform.Foundation.CFBridgingRetain
 import platform.Foundation.NSData
@@ -56,13 +58,14 @@ actual class EncryptionKeyProvider {
         )
         val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
 
-        val resultPtr = alloc<kotlinx.cinterop.ObjCObjectVar<Any?>>()
+        val resultPtr = alloc<CFTypeRefVar>()
         val status: OSStatus = SecItemCopyMatching(cfQuery, resultPtr.ptr)
         CFBridgingRelease(cfQuery)
 
         if (status != errSecSuccess) return null
 
-        val data = resultPtr.value as? NSData ?: return null
+        val cfResult: CFTypeRef? = resultPtr.value
+        val data = CFBridgingRelease(cfResult) as? NSData ?: return null
         NSString.create(data = data, encoding = NSUTF8StringEncoding) as? String
     }
 
