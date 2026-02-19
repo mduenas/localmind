@@ -44,3 +44,9 @@ class ModelManager {
         return CactusModelManager.getModelsDirectory()
     }
 }
+
+/**
+ * Scans a directory tree and returns total size of all files in bytes.
+ * Used to estimate download progress by comparing against expected model size.
+ */
+expect fun directorySize(path: String): Long

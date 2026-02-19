@@ -23,4 +23,11 @@ object AIConfig {
         FALLBACK_LLM_MODEL to "~200 MB",
         DEFAULT_STT_MODEL to "~75 MB",
     )
+
+    // Approximate download sizes in bytes for progress estimation
+    val MODEL_BYTES = mapOf(
+        DEFAULT_LLM_MODEL to 400_000_000L,
+        FALLBACK_LLM_MODEL to 200_000_000L,
+        DEFAULT_STT_MODEL to 75_000_000L,
+    )
 }
