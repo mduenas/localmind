@@ -2,6 +2,9 @@ package com.markduenas.localmind.ai
 
 import com.cactus.CactusLM
 import com.cactus.CactusModelManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.withContext
 
 class ModelManager {
 
@@ -25,14 +28,16 @@ class ModelManager {
      * can drive progress UI without committing to a loaded model.
      */
     suspend fun downloadModel(slug: String) {
-        try {
-            val lm = CactusLM()
-            lm.downloadModel(slug)
-        } catch (e: Exception) {
-            throw RuntimeException(
-                "Failed to download model '$slug'. Check your internet connection and try again.",
-                e,
-            )
+        withContext(Dispatchers.IO) {
+            try {
+                val lm = CactusLM()
+                lm.downloadModel(slug)
+            } catch (e: Exception) {
+                throw RuntimeException(
+                    "Failed to download model '$slug': ${e::class.simpleName}: ${e.message}",
+                    e,
+                )
+            }
         }
     }
 

@@ -119,15 +119,15 @@ class SettingsViewModel(
 
         // Poll the models directory to estimate progress
         val expectedBytes = AIConfig.MODEL_BYTES[slug]
-        val modelsDir = modelManager.getModelsDirectory()
-        val baselineSize = directorySize(modelsDir)
+        val modelsDir = try { modelManager.getModelsDirectory() } catch (_: Exception) { null }
+        val baselineSize = modelsDir?.let { try { directorySize(it) } catch (_: Exception) { 0L } } ?: 0L
 
         progressJob?.cancel()
-        progressJob = viewModelScope.launch {
-            while (isActive) {
-                delay(500)
-                if (expectedBytes != null && expectedBytes > 0) {
-                    val currentSize = directorySize(modelsDir) - baselineSize
+        if (modelsDir != null && expectedBytes != null && expectedBytes > 0) {
+            progressJob = viewModelScope.launch {
+                while (isActive) {
+                    delay(500)
+                    val currentSize = try { directorySize(modelsDir) - baselineSize } catch (_: Exception) { 0L }
                     val pct = (currentSize.toFloat() / expectedBytes).coerceIn(0f, 0.99f)
                     _downloadState.value = ModelDownloadState.Downloading(slug, progress = pct)
                 }
@@ -146,9 +146,12 @@ class SettingsViewModel(
                 _downloadState.value = ModelDownloadState.Idle
             } catch (e: Exception) {
                 progressJob?.cancel()
+                // Show the root cause for debugging
+                val rootCause = generateSequence<Throwable>(e) { it.cause }.last()
+                val detail = if (rootCause !== e) "${e.message} (${rootCause::class.simpleName}: ${rootCause.message})" else e.message
                 _downloadState.value = ModelDownloadState.Failed(
                     slug = slug,
-                    error = e.message ?: "Download failed",
+                    error = detail ?: "Download failed",
                 )
             }
         }
