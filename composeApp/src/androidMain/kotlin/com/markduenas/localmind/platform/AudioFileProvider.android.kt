@@ -7,7 +7,7 @@ actual class AudioFileProvider(
     private val context: Context,
 ) {
     actual fun createTempAudioFile(): String {
-        val file = File(context.cacheDir, "audio_${System.currentTimeMillis()}.m4a")
+        val file = File(context.cacheDir, "audio_${System.currentTimeMillis()}.wav")
         return file.absolutePath
     }
 
