@@ -5,16 +5,22 @@ import androidx.lifecycle.viewModelScope
 import com.markduenas.localmind.ai.AIConfig
 import com.markduenas.localmind.ai.ModelManager
 import com.markduenas.localmind.data.repository.SettingsRepository
+import com.markduenas.localmind.data.repository.TaskRepository
+import com.markduenas.localmind.platform.FileSharer
 import com.markduenas.localmind.platform.NotificationHelper
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 sealed interface ModelDownloadState {
     data object Idle : ModelDownloadState
@@ -36,10 +42,29 @@ data class SettingsUiState(
     val error: String? = null,
 )
 
+@Serializable
+private data class ExportTask(
+    val id: String,
+    val title: String,
+    val originalText: String,
+    val dueDate: String?,
+    val dueTime: String?,
+    val priority: String,
+    val status: String,
+    val tags: List<String>,
+    val createdAt: String,
+    val updatedAt: String,
+    val completedAt: String?,
+)
+
+private val exportJson = Json { prettyPrint = true }
+
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val modelManager: ModelManager,
     private val notificationHelper: NotificationHelper,
+    private val taskRepository: TaskRepository,
+    private val fileSharer: FileSharer,
 ) : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
@@ -143,6 +168,33 @@ class SettingsViewModel(
             }
         } catch (e: Exception) {
             _error.update { e.message }
+        }
+    }
+
+    fun exportTasks() {
+        viewModelScope.launch {
+            try {
+                val tasks = taskRepository.getAllTasks().first()
+                val exportTasks = tasks.map { task ->
+                    ExportTask(
+                        id = task.id,
+                        title = task.title,
+                        originalText = task.originalText,
+                        dueDate = task.dueDate?.toString(),
+                        dueTime = task.dueTime?.toString(),
+                        priority = task.priority.name,
+                        status = task.status.name,
+                        tags = task.tags.map { it.name },
+                        createdAt = task.createdAt.toString(),
+                        updatedAt = task.updatedAt.toString(),
+                        completedAt = task.completedAt?.toString(),
+                    )
+                }
+                val json = exportJson.encodeToString(exportTasks)
+                fileSharer.share("localmind-tasks.json", json)
+            } catch (e: Exception) {
+                _error.update { "Export failed: ${e.message}" }
+            }
         }
     }
 

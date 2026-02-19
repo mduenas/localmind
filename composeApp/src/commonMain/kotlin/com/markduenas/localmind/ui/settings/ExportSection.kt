@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ExportSection(
+    onExportTasks: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -22,7 +23,7 @@ fun ExportSection(
             modifier = Modifier.padding(bottom = 8.dp),
         )
         OutlinedButton(
-            onClick = { /* TODO: Export data */ },
+            onClick = onExportTasks,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Export Tasks as JSON")

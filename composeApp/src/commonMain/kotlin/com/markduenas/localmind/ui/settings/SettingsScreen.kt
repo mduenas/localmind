@@ -88,7 +88,7 @@ fun SettingsScreen(
 
         HorizontalDivider()
 
-        ExportSection()
+        ExportSection(onExportTasks = viewModel::exportTasks)
     }
 
     // Model download dialogs

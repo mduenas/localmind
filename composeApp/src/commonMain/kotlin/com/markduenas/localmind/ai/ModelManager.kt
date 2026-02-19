@@ -25,8 +25,15 @@ class ModelManager {
      * can drive progress UI without committing to a loaded model.
      */
     suspend fun downloadModel(slug: String) {
-        val lm = CactusLM()
-        lm.downloadModel(slug)
+        try {
+            val lm = CactusLM()
+            lm.downloadModel(slug)
+        } catch (e: Exception) {
+            throw RuntimeException(
+                "Failed to download model '$slug'. Check your internet connection and try again.",
+                e,
+            )
+        }
     }
 
     fun deleteModel(slug: String): Boolean {
