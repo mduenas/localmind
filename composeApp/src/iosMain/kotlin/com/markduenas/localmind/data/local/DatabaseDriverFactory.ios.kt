@@ -2,6 +2,8 @@ package com.markduenas.localmind.data.local
 
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
+import app.cash.sqldelight.driver.native.wrapConnection
+import co.touchlab.sqliter.DatabaseConfiguration
 import com.markduenas.localmind.security.EncryptionKeyProvider
 
 actual class DatabaseDriverFactory(
@@ -9,9 +11,20 @@ actual class DatabaseDriverFactory(
 ) {
     actual fun createDriver(): SqlDriver {
         val passphrase = keyProvider.getOrCreateKey()
-        return NativeSqliteDriver(LocalMindDb.Schema, "localmind.db").also { driver ->
-            val escapedPassphrase = passphrase.replace("'", "''")
-            driver.execute(null, "PRAGMA key = '$escapedPassphrase';", 0)
-        }
+        val schema = LocalMindDb.Schema
+        val configuration = DatabaseConfiguration(
+            name = "localmind.db",
+            version = schema.version.toInt(),
+            create = { connection ->
+                wrapConnection(connection) { schema.create(it) }
+            },
+            upgrade = { connection, oldVersion, newVersion ->
+                wrapConnection(connection) { schema.migrate(it, oldVersion.toLong(), newVersion.toLong()) }
+            },
+            encryptionConfig = DatabaseConfiguration.Encryption(
+                key = passphrase,
+            ),
+        )
+        return NativeSqliteDriver(configuration)
     }
 }
