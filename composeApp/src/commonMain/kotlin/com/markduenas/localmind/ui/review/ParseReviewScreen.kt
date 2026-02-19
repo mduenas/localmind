@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -147,6 +148,20 @@ fun ParseReviewScreen(
                         tags = state.editedTags,
                         onTagsChanged = viewModel::onTagsChanged,
                     )
+
+                    // Inference log toggle
+                    val log = state.inferenceLog
+                    if (log != null) {
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = viewModel::toggleInferenceLog) {
+                            Text(
+                                if (state.showInferenceLog) "Hide Log" else "Show Log",
+                            )
+                        }
+                        if (state.showInferenceLog) {
+                            InferenceLogSection(log = log)
+                        }
+                    }
 
                     Spacer(Modifier.height(24.dp))
 

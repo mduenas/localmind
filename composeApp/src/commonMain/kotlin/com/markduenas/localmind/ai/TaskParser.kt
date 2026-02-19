@@ -2,19 +2,37 @@ package com.markduenas.localmind.ai
 
 import com.markduenas.localmind.domain.model.ParsedTask
 import kotlin.time.Clock
+import kotlin.time.measureTimedValue
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+
+data class ParseOutput(val task: ParsedTask, val log: InferenceLog)
 
 open class TaskParser(
     private val llmService: LLMService
 ) {
-    open suspend fun parse(rawText: String): ParsedTask {
+    open suspend fun parse(rawText: String): ParseOutput {
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+        val systemPrompt = Prompts.SYSTEM_PROMPT
         val userPrompt = Prompts.buildUserPrompt(rawText, today)
-        val response = llmService.generateCompletion(
-            systemPrompt = Prompts.SYSTEM_PROMPT,
-            userPrompt = userPrompt
+        val modelName = llmService.currentModel ?: "unknown"
+
+        val (response, duration) = measureTimedValue {
+            llmService.generateCompletion(
+                systemPrompt = systemPrompt,
+                userPrompt = userPrompt
+            )
+        }
+
+        val task = JsonParser.parse(response, rawText)
+        val log = InferenceLog(
+            model = modelName,
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            rawResponse = response,
+            durationMs = duration.inWholeMilliseconds,
+            method = "llm",
         )
-        return JsonParser.parse(response, rawText)
+        return ParseOutput(task, log)
     }
 }

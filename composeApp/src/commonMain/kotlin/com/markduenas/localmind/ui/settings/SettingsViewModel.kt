@@ -41,6 +41,7 @@ data class SettingsUiState(
         AIConfig.FALLBACK_LLM_MODEL,
         AIConfig.DEFAULT_STT_MODEL,
     ),
+    val selectedLlmModel: String = AIConfig.DEFAULT_LLM_MODEL,
     val downloadState: ModelDownloadState = ModelDownloadState.Idle,
     val error: String? = null,
 )
@@ -77,13 +78,17 @@ class SettingsViewModel(
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.llmEnabled,
         settingsRepository.notificationsEnabled,
+        settingsRepository.selectedLlmModel,
         _error,
         _downloadState,
-    ) { llm, notifications, error, downloadState ->
+    ) { llm, notifications, selectedModel, error, downloadState ->
+        val downloaded = modelManager.getDownloadedModels()
+        val effectiveSelected = selectedModel.ifEmpty { AIConfig.DEFAULT_LLM_MODEL }
         SettingsUiState(
             llmEnabled = llm,
             notificationsEnabled = notifications,
-            downloadedModels = modelManager.getDownloadedModels(),
+            downloadedModels = downloaded,
+            selectedLlmModel = effectiveSelected,
             downloadState = downloadState,
             error = error,
         )
@@ -140,7 +145,12 @@ class SettingsViewModel(
                     modelManager.downloadModel(slug)
                 }
                 progressJob?.cancel()
-                if (slug == AIConfig.DEFAULT_LLM_MODEL) {
+                // Auto-select first downloaded LLM model if none selected
+                if (slug !in AIConfig.STT_MODELS) {
+                    val currentSelected = settingsRepository.selectedLlmModel.value
+                    if (currentSelected.isEmpty() || !modelManager.isModelDownloaded(currentSelected)) {
+                        settingsRepository.setSelectedLlmModel(slug)
+                    }
                     settingsRepository.setLlmEnabled(true)
                 }
                 _downloadState.value = ModelDownloadState.Idle
@@ -179,10 +189,23 @@ class SettingsViewModel(
         }
     }
 
+    fun selectModel(slug: String) {
+        settingsRepository.setSelectedLlmModel(slug)
+    }
+
     fun deleteModel(slug: String) {
         try {
             modelManager.deleteModel(slug)
-            if (slug == AIConfig.DEFAULT_LLM_MODEL && settingsRepository.llmEnabled.value) {
+            // If deleting the selected model, fall back to default or first available
+            if (slug == settingsRepository.selectedLlmModel.value) {
+                val remaining = modelManager.getDownloadedModels()
+                    .filter { it !in AIConfig.STT_MODELS && it != slug }
+                val fallback = remaining.firstOrNull() ?: AIConfig.DEFAULT_LLM_MODEL
+                settingsRepository.setSelectedLlmModel(fallback)
+            }
+            // If no LLM models remain, disable LLM
+            val hasLlm = modelManager.getDownloadedModels().any { it !in AIConfig.STT_MODELS }
+            if (!hasLlm && settingsRepository.llmEnabled.value) {
                 settingsRepository.setLlmEnabled(false)
             }
         } catch (e: Exception) {

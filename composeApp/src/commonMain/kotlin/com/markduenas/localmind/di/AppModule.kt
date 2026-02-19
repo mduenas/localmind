@@ -41,7 +41,7 @@ val appModule = module {
 
     // AI services
     singleOf(::ModelManager)
-    singleOf(::LLMService)
+    single { LLMService(get(), get()) }
     singleOf(::STTService)
     singleOf(::TaskParser)
     factory { RuleBasedParser() }

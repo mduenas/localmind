@@ -1,5 +1,6 @@
 package com.markduenas.localmind.domain.usecase
 
+import com.markduenas.localmind.ai.InferenceLog
 import com.markduenas.localmind.ai.RuleBasedParser
 import com.markduenas.localmind.ai.TaskParser
 import com.markduenas.localmind.domain.model.ParseResult
@@ -16,12 +17,21 @@ class ParseCaptureUseCase(
 
         return if (isLLMEnabled()) {
             try {
-                val parsed = taskParser.parse(rawText)
-                ParseResult.Success(parsed)
+                val output = taskParser.parse(rawText)
+                ParseResult.Success(output.task, inferenceLog = output.log)
             } catch (e: Exception) {
-                // Fallback to rule-based parser
+                // Build a partial log for the failed attempt
+                val failLog = InferenceLog(
+                    model = "unknown",
+                    systemPrompt = "",
+                    userPrompt = rawText,
+                    rawResponse = null,
+                    durationMs = 0,
+                    method = "fallback",
+                    error = e.message,
+                )
                 val parsed = ruleBasedParser.parse(rawText)
-                ParseResult.Fallback(parsed, reason = e.message)
+                ParseResult.Fallback(parsed, reason = e.message, inferenceLog = failLog)
             }
         } else {
             val parsed = ruleBasedParser.parse(rawText)

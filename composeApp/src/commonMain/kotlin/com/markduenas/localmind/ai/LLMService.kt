@@ -10,26 +10,41 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 
 class LLMService(
-    private val modelManager: ModelManager
+    private val modelManager: ModelManager,
+    private val settingsRepository: com.markduenas.localmind.data.repository.SettingsRepository,
 ) {
     private var cactusLM: CactusLM? = null
+    private var loadedModel: String? = null
     private val mutex = Mutex()
 
     val isLoaded: Boolean get() = cactusLM?.isLoaded() == true
+    val currentModel: String? get() = loadedModel
 
-    suspend fun initialize(model: String = AIConfig.DEFAULT_LLM_MODEL) {
+    suspend fun initialize(model: String? = null) {
+        val selectedModel = model
+            ?: settingsRepository.selectedLlmModel.value.ifEmpty { AIConfig.DEFAULT_LLM_MODEL }
+
         mutex.withLock {
-            if (cactusLM?.isLoaded() == true) return
+            // If already loaded with the requested model, skip
+            if (cactusLM?.isLoaded() == true && loadedModel == selectedModel) return
+
+            // Unload previous model if switching
+            if (cactusLM?.isLoaded() == true && loadedModel != selectedModel) {
+                cactusLM?.unload()
+                cactusLM = null
+                loadedModel = null
+            }
 
             val lm = CactusLM()
-            lm.downloadModel(model)
+            lm.downloadModel(selectedModel)
             lm.initializeModel(
                 CactusInitParams(
-                    model = model,
+                    model = selectedModel,
                     contextSize = AIConfig.CONTEXT_SIZE
                 )
             )
             cactusLM = lm
+            loadedModel = selectedModel
         }
     }
 

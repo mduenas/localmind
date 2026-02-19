@@ -14,6 +14,9 @@ class SettingsRepository {
     private val _notificationsEnabled = MutableStateFlow(true)
     val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
 
+    private val _selectedLlmModel = MutableStateFlow("")
+    val selectedLlmModel: StateFlow<String> = _selectedLlmModel.asStateFlow()
+
     fun setLlmEnabled(enabled: Boolean) {
         _llmEnabled.value = enabled
         store["llm_enabled"] = enabled.toString()
@@ -22,6 +25,11 @@ class SettingsRepository {
     fun setNotificationsEnabled(enabled: Boolean) {
         _notificationsEnabled.value = enabled
         store["notifications_enabled"] = enabled.toString()
+    }
+
+    fun setSelectedLlmModel(slug: String) {
+        _selectedLlmModel.value = slug
+        store["selected_llm_model"] = slug
     }
 
     fun getString(key: String, default: String = ""): String = store[key] ?: default

@@ -2,6 +2,7 @@ package com.markduenas.localmind.ui.review
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.markduenas.localmind.ai.InferenceLog
 import com.markduenas.localmind.domain.model.ParseResult
 import com.markduenas.localmind.domain.model.ParsedTask
 import com.markduenas.localmind.domain.model.Priority
@@ -20,6 +21,8 @@ data class ParseReviewUiState(
     val originalText: String = "",
     val parsedTask: ParsedTask? = null,
     val parseResult: ParseResult? = null,
+    val inferenceLog: InferenceLog? = null,
+    val showInferenceLog: Boolean = false,
     val isSaving: Boolean = false,
     val error: String? = null,
     val editedTitle: String = "",
@@ -41,9 +44,14 @@ class ParseReviewViewModel(
         _uiState.update { it.copy(isLoading = true, originalText = rawText, error = null) }
         viewModelScope.launch {
             val result = parseCaptureUseCase(rawText)
+            val log = when (result) {
+                is ParseResult.Success -> result.inferenceLog
+                is ParseResult.Fallback -> result.inferenceLog
+                is ParseResult.Error -> null
+            }
             when (result) {
-                is ParseResult.Success -> applyParsed(result.task, result)
-                is ParseResult.Fallback -> applyParsed(result.task, result)
+                is ParseResult.Success -> applyParsed(result.task, result, log)
+                is ParseResult.Fallback -> applyParsed(result.task, result, log)
                 is ParseResult.Error -> {
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
@@ -51,12 +59,13 @@ class ParseReviewViewModel(
         }
     }
 
-    private fun applyParsed(task: ParsedTask, result: ParseResult) {
+    private fun applyParsed(task: ParsedTask, result: ParseResult, log: InferenceLog?) {
         _uiState.update {
             it.copy(
                 isLoading = false,
                 parsedTask = task,
                 parseResult = result,
+                inferenceLog = log,
                 editedTitle = task.title,
                 editedDueDate = task.dueDate,
                 editedDueTime = task.dueTime,
@@ -64,6 +73,10 @@ class ParseReviewViewModel(
                 editedTags = task.tags,
             )
         }
+    }
+
+    fun toggleInferenceLog() {
+        _uiState.update { it.copy(showInferenceLog = !it.showInferenceLog) }
     }
 
     fun retryParse() {

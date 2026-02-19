@@ -17,63 +17,108 @@ import platform.posix.fopen
 import platform.posix.fread
 
 actual class DatabaseDriverFactory(
-    private val keyProvider: EncryptionKeyProvider,
+    @Suppress("UNUSED_PARAMETER") keyProvider: EncryptionKeyProvider,
 ) {
     actual fun createDriver(): SqlDriver {
-        val passphrase = keyProvider.getOrCreateKey()
-        migrateIfNeeded()
+        // Delete any leftover encrypted/corrupted databases from previous builds
+        deleteIncompatibleDatabase()
+
         val schema = LocalMindDb.Schema
         val configuration = DatabaseConfiguration(
-            name = "localmind.db",
+            name = DB_NAME,
             version = schema.version.toInt(),
             create = { connection ->
                 wrapConnection(connection) { schema.create(it) }
             },
             upgrade = { connection, oldVersion, newVersion ->
-                wrapConnection(connection) { schema.migrate(it, oldVersion.toLong(), newVersion.toLong()) }
+                wrapConnection(connection) {
+                    schema.migrate(it, oldVersion.toLong(), newVersion.toLong())
+                }
             },
-            encryptionConfig = DatabaseConfiguration.Encryption(
-                key = passphrase,
-            ),
+            // Note: Encryption disabled — SQLDelight 2.0.2's native driver uses the system
+            // sqlite3 on iOS which does not support PRAGMA key, even when SQLCipher pod is
+            // present. The iOS sandbox provides file-level protection. Encryption can be
+            // re-enabled once the project migrates to a SQLCipher-aware driver.
         )
-        return NativeSqliteDriver(configuration)
-    }
-
-    @OptIn(ExperimentalForeignApi::class)
-    private fun migrateIfNeeded() {
-        val dbPath = getDatabasePath() ?: return
-        val fm = NSFileManager.defaultManager
-        if (!fm.fileExistsAtPath(dbPath)) return
-
-        // Check if the file is an unencrypted SQLite database
-        if (!isUnencrypted(dbPath)) return
-
-        // Delete the old unencrypted database so a fresh encrypted one is created
-        fm.removeItemAtPath(dbPath, error = null)
-        // Also remove journal/wal files
-        fm.removeItemAtPath("$dbPath-journal", error = null)
-        fm.removeItemAtPath("$dbPath-wal", error = null)
-        fm.removeItemAtPath("$dbPath-shm", error = null)
-    }
-
-    @OptIn(ExperimentalForeignApi::class)
-    private fun isUnencrypted(path: String): Boolean {
-        val file = fopen(path, "rb") ?: return false
-        val header = ByteArray(16)
-        val bytesRead = header.usePinned { pinned ->
-            fread(pinned.addressOf(0), 1u, 16u, file)
+        return try {
+            NativeSqliteDriver(configuration)
+        } catch (e: Exception) {
+            // If open fails (e.g. leftover encrypted file), delete and retry
+            deleteDatabaseFiles()
+            NativeSqliteDriver(configuration)
         }
-        fclose(file)
-        if (bytesRead < 16u) return false
-        return header.decodeToString() == "SQLite format 3\u0000"
     }
 
-    private fun getDatabasePath(): String? {
+    /**
+     * Delete databases that can't be opened without encryption —
+     * i.e. files whose header does NOT start with the standard SQLite magic.
+     * These are leftover encrypted databases from previous builds.
+     */
+    @OptIn(ExperimentalForeignApi::class)
+    private fun deleteIncompatibleDatabase() {
+        for (path in getPossibleDatabasePaths()) {
+            val fm = NSFileManager.defaultManager
+            if (!fm.fileExistsAtPath(path)) continue
+
+            val file = fopen(path, "rb") ?: continue
+            val header = ByteArray(16)
+            val bytesRead = header.usePinned { pinned ->
+                fread(pinned.addressOf(0), 1u, 16u, file)
+            }
+            fclose(file)
+
+            if (bytesRead < 16u) {
+                // Empty or tiny file — delete
+                deleteDatabaseFilesAt(path)
+                continue
+            }
+
+            val isStandardSqlite = header.decodeToString() == "SQLite format 3\u0000"
+            if (!isStandardSqlite) {
+                // Encrypted or corrupted — delete so plain driver can create fresh
+                deleteDatabaseFilesAt(path)
+            }
+        }
+    }
+
+    private fun deleteDatabaseFiles() {
+        for (path in getPossibleDatabasePaths()) {
+            deleteDatabaseFilesAt(path)
+        }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private fun deleteDatabaseFilesAt(path: String) {
+        val fm = NSFileManager.defaultManager
+        fm.removeItemAtPath(path, error = null)
+        fm.removeItemAtPath("$path-journal", error = null)
+        fm.removeItemAtPath("$path-wal", error = null)
+        fm.removeItemAtPath("$path-shm", error = null)
+    }
+
+    private fun getPossibleDatabasePaths(): List<String> {
+        val paths = mutableListOf<String>()
+
+        // sqliter default: NSHomeDirectory()/databases/
+        val home = platform.Foundation.NSHomeDirectory()
+        paths.add("$home/databases/$DB_NAME")
+
+        // Application Support/databases/
         @Suppress("UNCHECKED_CAST")
-        val paths = NSSearchPathForDirectoriesInDomains(
+        val appSupportPaths = NSSearchPathForDirectoriesInDomains(
             NSApplicationSupportDirectory, NSUserDomainMask, true
-        ) as? List<String> ?: return null
-        val appSupportDir = paths.firstOrNull() ?: return null
-        return "$appSupportDir/databases/localmind.db"
+        ) as? List<String>
+        appSupportPaths?.firstOrNull()?.let { appSupport ->
+            paths.add("$appSupport/databases/$DB_NAME")
+        }
+
+        // Library/LocalDatabase/
+        paths.add("$home/Library/LocalDatabase/$DB_NAME")
+
+        return paths
+    }
+
+    companion object {
+        private const val DB_NAME = "localmind.db"
     }
 }

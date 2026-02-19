@@ -68,9 +68,11 @@ fun SettingsScreen(
         ModelManagementSection(
             downloadedModels = state.downloadedModels,
             availableModels = state.availableModels,
+            selectedLlmModel = state.selectedLlmModel,
             downloadState = state.downloadState,
             onDownloadModel = viewModel::requestModelDownload,
             onDeleteModel = viewModel::deleteModel,
+            onSelectModel = viewModel::selectModel,
             onRetryDownload = viewModel::retryDownload,
             onDismissError = viewModel::dismissDownloadError,
         )
