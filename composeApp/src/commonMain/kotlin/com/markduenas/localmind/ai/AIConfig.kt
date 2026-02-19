@@ -24,6 +24,9 @@ object AIConfig {
         DEFAULT_STT_MODEL to "~75 MB",
     )
 
+    // STT model slugs — downloaded via CactusSTT instead of CactusLM
+    val STT_MODELS = setOf(DEFAULT_STT_MODEL)
+
     // Approximate download sizes in bytes for progress estimation
     val MODEL_BYTES = mapOf(
         DEFAULT_LLM_MODEL to 400_000_000L,

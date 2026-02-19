@@ -2,6 +2,7 @@ package com.markduenas.localmind.ai
 
 import com.cactus.CactusLM
 import com.cactus.CactusModelManager
+import com.cactus.CactusSTT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
@@ -30,8 +31,13 @@ class ModelManager {
     suspend fun downloadModel(slug: String) {
         withContext(Dispatchers.IO) {
             try {
-                val lm = CactusLM()
-                lm.downloadModel(slug)
+                if (slug in AIConfig.STT_MODELS) {
+                    val stt = CactusSTT()
+                    stt.downloadModel(slug)
+                } else {
+                    val lm = CactusLM()
+                    lm.downloadModel(slug)
+                }
             } catch (e: Exception) {
                 throw RuntimeException(
                     "Failed to download model '$slug': ${e::class.simpleName}: ${e.message}",
