@@ -103,7 +103,7 @@ class ParseReviewViewModel(
         _uiState.update { it.copy(editedTags = tags) }
     }
 
-    fun saveTask(onSaved: () -> Unit) {
+    fun saveTask(onSaved: (dueDate: LocalDate?) -> Unit) {
         val state = _uiState.value
         if (state.editedTitle.isBlank()) return
 
@@ -121,7 +121,7 @@ class ParseReviewViewModel(
                     suggestedEdits = null,
                 )
                 createTaskUseCase(finalTask)
-                onSaved()
+                onSaved(state.editedDueDate)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false, error = e.message) }
             }

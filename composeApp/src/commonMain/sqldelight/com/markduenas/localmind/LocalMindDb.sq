@@ -42,7 +42,7 @@ CREATE INDEX idx_tasks_created ON tasks(created_at DESC);
 -- Task queries
 getTodayTasks:
 SELECT * FROM tasks
-WHERE (due_date = ? OR (due_date < ? AND status = 0)) AND status != 2
+WHERE (due_date IS NULL OR due_date = ? OR (due_date < ? AND status = 0)) AND status != 2
 ORDER BY priority DESC, due_time ASC;
 
 getUpcomingTasks:

@@ -39,7 +39,6 @@ data class SettingsUiState(
     val availableModels: List<String> = listOf(
         AIConfig.DEFAULT_LLM_MODEL,
         AIConfig.FALLBACK_LLM_MODEL,
-        AIConfig.DEFAULT_STT_MODEL,
     ),
     val selectedLlmModel: String = AIConfig.DEFAULT_LLM_MODEL,
     val downloadState: ModelDownloadState = ModelDownloadState.Idle,

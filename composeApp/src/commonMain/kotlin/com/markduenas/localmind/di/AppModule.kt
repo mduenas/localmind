@@ -3,7 +3,6 @@ package com.markduenas.localmind.di
 import com.markduenas.localmind.ai.LLMService
 import com.markduenas.localmind.ai.ModelManager
 import com.markduenas.localmind.ai.RuleBasedParser
-import com.markduenas.localmind.ai.STTService
 import com.markduenas.localmind.ai.TaskParser
 import com.markduenas.localmind.data.local.DatabaseDriverFactory
 import com.markduenas.localmind.data.local.LocalMindDb
@@ -42,7 +41,6 @@ val appModule = module {
     // AI services
     singleOf(::ModelManager)
     single { LLMService(get(), get()) }
-    singleOf(::STTService)
     singleOf(::TaskParser)
     factory { RuleBasedParser() }
 

@@ -2,11 +2,9 @@ package com.markduenas.localmind.platform
 
 import platform.AVFAudio.AVAudioSession
 import platform.AVFAudio.AVAudioSessionRecordPermissionGranted
+import platform.Speech.SFSpeechRecognizer
 import platform.UserNotifications.UNAuthorizationStatusAuthorized
 import platform.UserNotifications.UNUserNotificationCenter
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
-import kotlinx.coroutines.runBlocking
 
 actual class PermissionHelper {
     actual fun hasNotificationPermission(): Boolean {
@@ -22,5 +20,12 @@ actual class PermissionHelper {
 
     actual fun hasMicrophonePermission(): Boolean {
         return AVAudioSession.sharedInstance().recordPermission == AVAudioSessionRecordPermissionGranted
+    }
+
+    actual fun hasSpeechRecognitionPermission(): Boolean {
+        // Compare the raw value of the authorization status
+        val status = SFSpeechRecognizer.authorizationStatus()
+        // .authorized has raw value 3
+        return status.value == 3L
     }
 }

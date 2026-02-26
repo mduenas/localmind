@@ -32,7 +32,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.markduenas.localmind.platform.MicPermissionEffect
+import com.markduenas.localmind.platform.SpeechActivityFallbackEffect
+import com.markduenas.localmind.platform.SpeechPermissionEffect
+import com.markduenas.localmind.platform.SpeechRecognitionService
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,10 +49,14 @@ fun CaptureScreen(
     var selectedTab by remember { mutableStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    MicPermissionEffect(
-        shouldRequest = state.needsMicPermission,
-        onResult = viewModel::onMicPermissionResult,
+    val speechService = koinInject<SpeechRecognitionService>()
+
+    SpeechPermissionEffect(
+        shouldRequest = state.needsSpeechPermission,
+        onResult = viewModel::onSpeechPermissionResult,
     )
+
+    SpeechActivityFallbackEffect(speechService)
 
     LaunchedEffect(state.error) {
         state.error?.let {
@@ -82,26 +89,25 @@ fun CaptureScreen(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Text") },
+                    text = { Text("Voice") },
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Voice") },
+                    text = { Text("Text") },
                 )
             }
 
             Spacer(Modifier.height(16.dp))
 
             when (selectedTab) {
-                0 -> TextCaptureCard(
+                0 -> VoiceCaptureCard(
+                    isRecording = state.isRecording,
+                    onToggleRecording = viewModel::toggleRecording,
+                )
+                1 -> TextCaptureCard(
                     text = state.inputText,
                     onTextChanged = viewModel::onTextChanged,
-                )
-                1 -> VoiceCaptureCard(
-                    isRecording = state.isRecording,
-                    isTranscribing = state.isTranscribing,
-                    onToggleRecording = viewModel::toggleRecording,
                 )
             }
 

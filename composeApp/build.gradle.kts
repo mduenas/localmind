@@ -41,6 +41,7 @@ kotlin {
             linkerOpts("-framework", "CoreML")
             linkerOpts("-framework", "Accelerate")
             linkerOpts("-framework", "AVFoundation")
+            linkerOpts("-framework", "Speech")
         }
     }
 
@@ -104,8 +105,8 @@ android {
         applicationId = "com.markduenas.localmind"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 13
-        versionName = "1.0.12"
+        versionCode = 23
+        versionName = "1.0.22"
     }
 
     signingConfigs {

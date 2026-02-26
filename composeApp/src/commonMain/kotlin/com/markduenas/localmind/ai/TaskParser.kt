@@ -12,6 +12,8 @@ open class TaskParser(
     private val llmService: LLMService
 ) {
     open suspend fun parse(rawText: String): ParseOutput {
+        llmService.initialize()
+
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
         val systemPrompt = Prompts.SYSTEM_PROMPT
         val userPrompt = Prompts.buildUserPrompt(rawText, today)

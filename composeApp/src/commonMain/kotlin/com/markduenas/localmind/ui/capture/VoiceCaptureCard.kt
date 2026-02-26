@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun VoiceCaptureCard(
     isRecording: Boolean,
-    isTranscribing: Boolean,
     onToggleRecording: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -43,7 +42,6 @@ fun VoiceCaptureCard(
             FilledIconButton(
                 onClick = onToggleRecording,
                 modifier = Modifier.size(64.dp),
-                enabled = !isTranscribing,
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = if (isRecording) {
                         MaterialTheme.colorScheme.error
@@ -59,11 +57,7 @@ fun VoiceCaptureCard(
                 )
             }
             Text(
-                text = when {
-                    isTranscribing -> "Transcribing..."
-                    isRecording -> "Listening..."
-                    else -> "Tap to speak"
-                },
+                text = if (isRecording) "Listening..." else "Tap to speak",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

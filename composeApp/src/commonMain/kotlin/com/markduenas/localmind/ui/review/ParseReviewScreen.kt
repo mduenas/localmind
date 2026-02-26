@@ -38,7 +38,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun ParseReviewScreen(
     captureText: String,
-    onSaved: () -> Unit,
+    onSaved: (dueDate: kotlinx.datetime.LocalDate?) -> Unit,
     onDiscard: () -> Unit,
     viewModel: ParseReviewViewModel = koinViewModel(),
 ) {
@@ -177,7 +177,7 @@ fun ParseReviewScreen(
                             Text("Discard")
                         }
                         Button(
-                            onClick = { viewModel.saveTask(onSaved) },
+                            onClick = { viewModel.saveTask { dueDate -> onSaved(dueDate) } },
                             modifier = Modifier.weight(1f),
                             enabled = state.editedTitle.isNotBlank() && !state.isSaving,
                         ) {

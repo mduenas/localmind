@@ -8,5 +8,7 @@
 	<false/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>LocalMind needs microphone access to capture voice notes for task creation.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>LocalMind uses on-device speech recognition to transcribe your voice notes into tasks.</string>
 </dict>
 </plist>

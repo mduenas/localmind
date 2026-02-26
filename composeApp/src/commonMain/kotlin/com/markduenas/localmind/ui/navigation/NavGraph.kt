@@ -12,6 +12,10 @@ import com.markduenas.localmind.ui.settings.SettingsScreen
 import com.markduenas.localmind.ui.tasks.AllTasksScreen
 import com.markduenas.localmind.ui.tasks.TodayScreen
 import com.markduenas.localmind.ui.tasks.UpcomingScreen
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 
 @Composable
 fun NavGraph(
@@ -49,9 +53,15 @@ fun NavGraph(
             val route = backStackEntry.toRoute<Screen.ParseReview>()
             ParseReviewScreen(
                 captureText = route.captureText,
-                onSaved = {
-                    navController.navigate(Screen.Today) {
+                onSaved = { dueDate ->
+                    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                    val destination = when {
+                        dueDate == null || dueDate == today || dueDate < today -> Screen.Today
+                        else -> Screen.Upcoming
+                    }
+                    navController.navigate(destination) {
                         popUpTo<Screen.Today> { inclusive = true }
+                        launchSingleTop = true
                     }
                 },
                 onDiscard = { navController.popBackStack() },

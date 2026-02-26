@@ -26,4 +26,9 @@ actual class PermissionHelper(
             Manifest.permission.RECORD_AUDIO,
         ) == PackageManager.PERMISSION_GRANTED
     }
+
+    actual fun hasSpeechRecognitionPermission(): Boolean {
+        // On Android, speech recognition only requires RECORD_AUDIO
+        return hasMicrophonePermission()
+    }
 }
