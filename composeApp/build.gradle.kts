@@ -13,6 +13,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.paparazzi)
 }
 
 sqldelight {

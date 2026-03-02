@@ -24,6 +24,7 @@ cactus = "1.4.1-beta"
 androidx-work = "2.10.1"
 androidx-glance = "1.1.1"
 billing = "7.1.1"
+paparazzi = "2.0.0-alpha02"
 turbine = "1.2.0"
 uuid = "0.8.4"
 
@@ -92,4 +93,5 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMul
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+paparazzi = { id = "app.cash.paparazzi", version.ref = "paparazzi" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
