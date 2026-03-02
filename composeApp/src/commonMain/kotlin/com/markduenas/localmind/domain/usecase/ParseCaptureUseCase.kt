@@ -18,7 +18,7 @@ class ParseCaptureUseCase(
         return if (isLLMEnabled()) {
             try {
                 val output = taskParser.parse(rawText)
-                ParseResult.Success(output.task, inferenceLog = output.log)
+                ParseResult.Success(output.capture, inferenceLog = output.log)
             } catch (e: Exception) {
                 // Build a partial log for the failed attempt
                 val failLog = InferenceLog(

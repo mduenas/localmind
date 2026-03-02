@@ -99,3 +99,55 @@ SELECT * FROM captures WHERE processed = 0 ORDER BY created_at ASC;
 
 markCaptureProcessed:
 UPDATE captures SET processed = 1 WHERE id = ?;
+
+-- Notes table
+CREATE TABLE notes (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL DEFAULT '',
+    original_text TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    parsing_confidence REAL
+);
+
+CREATE TABLE note_tags (
+    note_id TEXT NOT NULL,
+    tag_id TEXT NOT NULL,
+    PRIMARY KEY (note_id, tag_id),
+    FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_notes_created ON notes(created_at DESC);
+
+-- Note queries
+getAllNotes:
+SELECT * FROM notes ORDER BY created_at DESC;
+
+getNoteById:
+SELECT * FROM notes WHERE id = ?;
+
+insertNote:
+INSERT INTO notes (id, title, body, original_text, created_at, updated_at, parsing_confidence)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+updateNote:
+UPDATE notes SET title = ?, body = ?, updated_at = ? WHERE id = ?;
+
+deleteNote:
+DELETE FROM notes WHERE id = ?;
+
+searchNotes:
+SELECT * FROM notes WHERE title LIKE ? OR body LIKE ? OR original_text LIKE ? ORDER BY created_at DESC;
+
+getTagsForNote:
+SELECT tags.* FROM tags
+INNER JOIN note_tags ON tags.id = note_tags.tag_id
+WHERE note_tags.note_id = ?;
+
+addTagToNote:
+INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?, ?);
+
+removeTagFromNote:
+DELETE FROM note_tags WHERE note_id = ? AND tag_id = ?;

@@ -1,9 +1,11 @@
 package com.markduenas.localmind.data.local
 
 import com.markduenas.localmind.Captures
+import com.markduenas.localmind.Notes
 import com.markduenas.localmind.Tags
 import com.markduenas.localmind.Tasks
 import com.markduenas.localmind.domain.model.Capture
+import com.markduenas.localmind.domain.model.Note
 import com.markduenas.localmind.domain.model.Priority
 import com.markduenas.localmind.domain.model.Tag
 import com.markduenas.localmind.domain.model.Task
@@ -34,6 +36,19 @@ fun Tags.toDomainTag(): Tag {
         id = id,
         name = name,
         color = color
+    )
+}
+
+fun Notes.toDomainNote(tags: List<Tag> = emptyList()): Note {
+    return Note(
+        id = id,
+        title = title,
+        body = body,
+        originalText = original_text,
+        tags = tags,
+        createdAt = Instant.fromEpochMilliseconds(created_at),
+        updatedAt = Instant.fromEpochMilliseconds(updated_at),
+        parsingConfidence = parsing_confidence?.toFloat()
     )
 }
 

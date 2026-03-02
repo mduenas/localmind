@@ -1,5 +1,7 @@
 package com.markduenas.localmind.ai
 
+import com.markduenas.localmind.domain.model.ParsedCapture
+import com.markduenas.localmind.domain.model.ParsedNote
 import com.markduenas.localmind.domain.model.ParsedTask
 import com.markduenas.localmind.domain.model.Priority
 import kotlinx.datetime.LocalDate
@@ -9,25 +11,62 @@ class RuleBasedParser {
     companion object {
         private val HASHTAG_PATTERN = Regex("#(\\w+)")
         private const val CONFIDENCE = 0.7f
+
+        private val ACTION_VERBS = setOf(
+            "buy", "call", "fix", "send", "schedule", "meet", "finish", "submit",
+            "clean", "pick", "drop", "make", "write", "email", "text", "pay",
+            "book", "cancel", "return", "order", "check", "review", "update",
+            "complete", "prepare", "remind", "setup", "set up", "install",
+            "create", "build", "organize", "attend", "visit", "deliver"
+        )
     }
 
-    fun parse(rawText: String): ParsedTask {
+    fun parse(rawText: String): ParsedCapture {
         val dueDate = extractDate(rawText)
         val dueTime = TimePatterns.extract(rawText)
         val priority = extractPriority(rawText)
         val tags = extractTags(rawText)
         val title = buildTitle(rawText, dueDate, tags)
 
-        return ParsedTask(
-            title = title,
-            dueDate = dueDate,
-            dueTime = dueTime,
-            priority = priority,
-            tags = tags,
-            originalText = rawText,
-            confidence = CONFIDENCE,
-            suggestedEdits = null
-        )
+        return if (isLikelyNote(rawText, dueDate, dueTime != null, priority)) {
+            ParsedCapture.NoteCapture(
+                ParsedNote(
+                    title = title,
+                    body = rawText,
+                    tags = tags,
+                    originalText = rawText,
+                    confidence = CONFIDENCE
+                )
+            )
+        } else {
+            ParsedCapture.TaskCapture(
+                ParsedTask(
+                    title = title,
+                    dueDate = dueDate,
+                    dueTime = dueTime,
+                    priority = priority,
+                    tags = tags,
+                    originalText = rawText,
+                    confidence = CONFIDENCE,
+                    suggestedEdits = null
+                )
+            )
+        }
+    }
+
+    private fun isLikelyNote(
+        rawText: String,
+        dueDate: LocalDate?,
+        hasTime: Boolean,
+        priority: Priority
+    ): Boolean {
+        if (dueDate != null || hasTime) return false
+        if (priority != Priority.MEDIUM) return false
+        val lowerText = rawText.lowercase()
+        val hasActionVerb = ACTION_VERBS.any { verb ->
+            lowerText.contains(Regex("\\b$verb\\b"))
+        }
+        return !hasActionVerb
     }
 
     private fun extractDate(text: String): LocalDate? {

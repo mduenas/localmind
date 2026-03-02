@@ -8,15 +8,19 @@ import com.markduenas.localmind.data.local.DatabaseDriverFactory
 import com.markduenas.localmind.data.local.LocalMindDb
 import com.markduenas.localmind.data.repository.CaptureRepository
 import com.markduenas.localmind.data.repository.CaptureRepositoryImpl
+import com.markduenas.localmind.data.repository.NoteRepository
+import com.markduenas.localmind.data.repository.NoteRepositoryImpl
 import com.markduenas.localmind.data.repository.SettingsRepository
 import com.markduenas.localmind.data.repository.TaskRepository
 import com.markduenas.localmind.data.repository.TaskRepositoryImpl
 import com.markduenas.localmind.domain.usecase.CompleteTaskUseCase
+import com.markduenas.localmind.domain.usecase.CreateNoteUseCase
 import com.markduenas.localmind.domain.usecase.CreateTaskUseCase
 import com.markduenas.localmind.domain.usecase.GetTodayTasksUseCase
 import com.markduenas.localmind.domain.usecase.GetUpcomingTasksUseCase
 import com.markduenas.localmind.domain.usecase.ParseCaptureUseCase
 import com.markduenas.localmind.ui.capture.CaptureViewModel
+import com.markduenas.localmind.ui.notes.NoteListViewModel
 import com.markduenas.localmind.ui.review.ParseReviewViewModel
 import com.markduenas.localmind.ui.settings.SettingsViewModel
 import com.markduenas.localmind.ui.tasks.TaskListViewModel
@@ -36,6 +40,7 @@ val appModule = module {
     // Repositories
     singleOf(::TaskRepositoryImpl) bind TaskRepository::class
     singleOf(::CaptureRepositoryImpl) bind CaptureRepository::class
+    singleOf(::NoteRepositoryImpl) bind NoteRepository::class
     singleOf(::SettingsRepository)
 
     // AI services
@@ -48,6 +53,7 @@ val appModule = module {
     factoryOf(::GetTodayTasksUseCase)
     factoryOf(::GetUpcomingTasksUseCase)
     factoryOf(::CreateTaskUseCase)
+    factoryOf(::CreateNoteUseCase)
     factoryOf(::CompleteTaskUseCase)
     factory {
         ParseCaptureUseCase(
@@ -61,5 +67,6 @@ val appModule = module {
     viewModelOf(::CaptureViewModel)
     viewModelOf(::ParseReviewViewModel)
     viewModelOf(::TaskListViewModel)
+    viewModelOf(::NoteListViewModel)
     viewModelOf(::SettingsViewModel)
 }

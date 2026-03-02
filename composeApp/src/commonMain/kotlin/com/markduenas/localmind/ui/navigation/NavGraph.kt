@@ -7,12 +7,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.markduenas.localmind.ui.capture.CaptureScreen
+import com.markduenas.localmind.ui.notes.NotesScreen
 import com.markduenas.localmind.ui.review.ParseReviewScreen
+import com.markduenas.localmind.ui.review.SaveResult
 import com.markduenas.localmind.ui.settings.SettingsScreen
 import com.markduenas.localmind.ui.tasks.AllTasksScreen
 import com.markduenas.localmind.ui.tasks.TodayScreen
 import com.markduenas.localmind.ui.tasks.UpcomingScreen
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock
@@ -36,6 +37,9 @@ fun NavGraph(
         composable<Screen.AllTasks> {
             AllTasksScreen()
         }
+        composable<Screen.Notes> {
+            NotesScreen()
+        }
         composable<Screen.Settings> {
             SettingsScreen()
         }
@@ -53,11 +57,17 @@ fun NavGraph(
             val route = backStackEntry.toRoute<Screen.ParseReview>()
             ParseReviewScreen(
                 captureText = route.captureText,
-                onSaved = { dueDate ->
-                    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-                    val destination = when {
-                        dueDate == null || dueDate == today || dueDate < today -> Screen.Today
-                        else -> Screen.Upcoming
+                onSaved = { result ->
+                    val destination = when (result) {
+                        is SaveResult.NoteSaved -> Screen.Notes
+                        is SaveResult.TaskSaved -> {
+                            val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                            val dueDate = result.dueDate
+                            when {
+                                dueDate == null || dueDate == today || dueDate < today -> Screen.Today
+                                else -> Screen.Upcoming
+                            }
+                        }
                     }
                     navController.navigate(destination) {
                         popUpTo<Screen.Today> { inclusive = true }

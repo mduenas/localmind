@@ -14,6 +14,9 @@ sealed class Screen {
     data object AllTasks : Screen()
 
     @Serializable
+    data object Notes : Screen()
+
+    @Serializable
     data object Settings : Screen()
 
     @Serializable

@@ -2,6 +2,7 @@ package com.markduenas.localmind.domain.usecase
 
 import com.markduenas.localmind.ai.RuleBasedParser
 import com.markduenas.localmind.domain.model.ParseResult
+import com.markduenas.localmind.domain.model.ParsedCapture
 import com.markduenas.localmind.domain.model.ParsedTask
 import com.markduenas.localmind.domain.model.Priority
 import kotlin.test.Test
@@ -39,7 +40,9 @@ class ParseCaptureUseCaseTest {
         val result = useCase("buy groceries tomorrow")
 
         assertIs<ParseResult.Success>(result)
-        assertEquals("Buy groceries", result.task.title)
+        val capture = result.capture
+        assertIs<ParsedCapture.TaskCapture>(capture)
+        assertEquals("Buy groceries", capture.task.title)
     }
 
     @Test
@@ -63,7 +66,9 @@ class ParseCaptureUseCaseTest {
         val result = useCase("buy groceries")
 
         assertIs<ParseResult.Success>(result)
-        assertEquals(0.95f, result.task.confidence)
+        val capture = result.capture
+        assertIs<ParsedCapture.TaskCapture>(capture)
+        assertEquals(0.95f, capture.task.confidence)
     }
 
     @Test
@@ -77,7 +82,9 @@ class ParseCaptureUseCaseTest {
         val result = useCase("buy groceries tomorrow")
 
         assertIs<ParseResult.Fallback>(result)
-        assertEquals("Buy groceries", result.task.title)
+        val capture = result.capture
+        assertIs<ParsedCapture.TaskCapture>(capture)
+        assertEquals("Buy groceries", capture.task.title)
         assertTrue(result.reason != null)
     }
 }

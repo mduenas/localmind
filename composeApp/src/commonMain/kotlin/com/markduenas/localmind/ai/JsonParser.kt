@@ -1,5 +1,7 @@
 package com.markduenas.localmind.ai
 
+import com.markduenas.localmind.domain.model.ParsedCapture
+import com.markduenas.localmind.domain.model.ParsedNote
 import com.markduenas.localmind.domain.model.ParsedTask
 import com.markduenas.localmind.domain.model.Priority
 import kotlinx.datetime.LocalDate
@@ -15,8 +17,10 @@ private val lenientJson = Json {
 }
 
 @Serializable
-internal data class TaskJson(
+internal data class CaptureJson(
+    val type: String = "task",
     val title: String,
+    val body: String? = null,
     @SerialName("due_date") val dueDate: String? = null,
     @SerialName("due_time") val dueTime: String? = null,
     val priority: String = "medium",
@@ -46,24 +50,38 @@ object JsonParser {
         return stripped.substring(start, end + 1)
     }
 
-    fun parse(jsonString: String, originalText: String): ParsedTask {
+    fun parse(jsonString: String, originalText: String): ParsedCapture {
         val extracted = extractJson(jsonString)
-        val taskJson = lenientJson.decodeFromString<TaskJson>(extracted)
-        return taskJson.toDomain(originalText)
+        val captureJson = lenientJson.decodeFromString<CaptureJson>(extracted)
+        return captureJson.toDomain(originalText)
     }
 }
 
-private fun TaskJson.toDomain(originalText: String): ParsedTask {
-    return ParsedTask(
-        title = title,
-        dueDate = dueDate?.let { parseDateSafe(it) },
-        dueTime = dueTime?.let { parseTimeSafe(it) },
-        priority = parsePriority(priority),
-        tags = tags,
-        originalText = originalText,
-        confidence = confidence,
-        suggestedEdits = null
-    )
+private fun CaptureJson.toDomain(originalText: String): ParsedCapture {
+    return if (type.lowercase() == "note") {
+        ParsedCapture.NoteCapture(
+            ParsedNote(
+                title = title,
+                body = body ?: originalText,
+                tags = tags,
+                originalText = originalText,
+                confidence = confidence
+            )
+        )
+    } else {
+        ParsedCapture.TaskCapture(
+            ParsedTask(
+                title = title,
+                dueDate = dueDate?.let { parseDateSafe(it) },
+                dueTime = dueTime?.let { parseTimeSafe(it) },
+                priority = parsePriority(priority),
+                tags = tags,
+                originalText = originalText,
+                confidence = confidence,
+                suggestedEdits = null
+            )
+        )
+    }
 }
 
 private fun parseDateSafe(value: String): LocalDate? {

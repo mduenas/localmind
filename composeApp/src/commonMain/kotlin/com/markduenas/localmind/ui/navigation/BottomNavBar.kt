@@ -6,6 +6,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Today
@@ -22,6 +23,7 @@ val bottomNavItems = listOf(
     BottomNavItem("Today", Icons.Default.Today, Screen.Today),
     BottomNavItem("Upcoming", Icons.Default.CalendarMonth, Screen.Upcoming),
     BottomNavItem("All", Icons.Default.Checklist, Screen.AllTasks),
+    BottomNavItem("Notes", Icons.AutoMirrored.Filled.StickyNote2, Screen.Notes),
     BottomNavItem("Settings", Icons.Default.Settings, Screen.Settings),
 )
 
