@@ -6,9 +6,9 @@ object AIConfig {
     const val FALLBACK_LLM_MODEL = "gemma3-270m"
 
     // Generation parameters
-    const val MAX_TOKENS = 256
+    const val MAX_TOKENS = 128
     const val TEMPERATURE = 0.2
-    const val CONTEXT_SIZE = 1024
+    const val CONTEXT_SIZE = 2048
 
     // Performance budgets
     const val LLM_TIMEOUT_MS = 10_000L
