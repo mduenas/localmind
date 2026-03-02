@@ -1,0 +1,23 @@
+LocalMind is a privacy-first AI task manager that runs entirely on your device. Capture ideas with voice or text — the on-device AI parses them into structured tasks with due dates, priorities, and tags. No cloud. No account. No data ever leaves your phone.
+
+KEY FEATURES
+
+- Quick Capture: Voice or text input turns natural language into tasks instantly
+- On-Device AI: Smart parsing powered by on-device LLM — works without internet
+- 100% Offline: All data stays on your device, encrypted at rest
+- Rule-Based Parsing: Free tier extracts dates, priorities, and tags automatically
+- Task Management: Today view, upcoming tasks, priority sorting
+- Notes: Capture thoughts that aren't tasks
+- Daily Summary: Optional notification to review your day
+- Export: Share tasks as JSON (Premium)
+
+PRIVACY BY DESIGN
+
+LocalMind doesn't just promise privacy — it enforces it by architecture. There are no servers, no accounts, no analytics, and no network calls. Your data is encrypted locally and never transmitted anywhere.
+
+FREE VS PREMIUM
+
+Free: Full capture, rule-based parsing, task management, notes, daily summary
+Premium: On-device LLM for smarter parsing, JSON export, priority support
+
+Get premium with a one-time purchase or monthly subscription.

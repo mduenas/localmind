@@ -1,0 +1,1 @@
+task,todo,AI,offline,private,voice,capture,productivity,notes,manager

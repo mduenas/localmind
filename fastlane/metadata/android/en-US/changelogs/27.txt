@@ -1,0 +1,5 @@
+- Added in-app purchase support for Premium features
+- Premium unlocks on-device LLM parsing and JSON export
+- Settings screen now shows plan status with upgrade option
+- Paywall sheet with lifetime and monthly purchase options
+- Restore purchases support
