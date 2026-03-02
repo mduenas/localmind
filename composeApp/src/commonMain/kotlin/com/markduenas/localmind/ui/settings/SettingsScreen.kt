@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.markduenas.localmind.platform.NotificationPermissionEffect
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -25,6 +26,11 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    NotificationPermissionEffect(
+        shouldRequest = state.needsNotificationPermission,
+        onResult = viewModel::onNotificationPermissionResult,
+    )
 
     Column(
         modifier = Modifier

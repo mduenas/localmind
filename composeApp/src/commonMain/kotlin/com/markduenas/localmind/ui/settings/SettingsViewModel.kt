@@ -9,6 +9,7 @@ import com.markduenas.localmind.data.repository.SettingsRepository
 import com.markduenas.localmind.data.repository.TaskRepository
 import com.markduenas.localmind.platform.FileSharer
 import com.markduenas.localmind.platform.NotificationHelper
+import com.markduenas.localmind.platform.PermissionHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -43,6 +44,7 @@ data class SettingsUiState(
     val selectedLlmModel: String = AIConfig.DEFAULT_LLM_MODEL,
     val downloadState: ModelDownloadState = ModelDownloadState.Idle,
     val error: String? = null,
+    val needsNotificationPermission: Boolean = false,
 )
 
 @Serializable
@@ -68,10 +70,12 @@ class SettingsViewModel(
     private val notificationHelper: NotificationHelper,
     private val taskRepository: TaskRepository,
     private val fileSharer: FileSharer,
+    private val permissionHelper: PermissionHelper,
 ) : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
     private val _downloadState = MutableStateFlow<ModelDownloadState>(ModelDownloadState.Idle)
+    private val _needsNotificationPermission = MutableStateFlow(false)
     private var progressJob: Job? = null
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -90,6 +94,7 @@ class SettingsViewModel(
             selectedLlmModel = effectiveSelected,
             downloadState = downloadState,
             error = error,
+            needsNotificationPermission = _needsNotificationPermission.value,
         )
     }.stateIn(
         viewModelScope,
@@ -176,15 +181,38 @@ class SettingsViewModel(
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
-        settingsRepository.setNotificationsEnabled(enabled)
-        try {
-            if (enabled) {
-                notificationHelper.scheduleDailySummary()
+        if (enabled) {
+            if (permissionHelper.hasNotificationPermission()) {
+                settingsRepository.setNotificationsEnabled(true)
+                try {
+                    notificationHelper.scheduleDailySummary()
+                } catch (e: Exception) {
+                    _error.update { e.message }
+                }
             } else {
-                notificationHelper.cancelAll()
+                _needsNotificationPermission.value = true
             }
-        } catch (e: Exception) {
-            _error.update { e.message }
+        } else {
+            settingsRepository.setNotificationsEnabled(false)
+            try {
+                notificationHelper.cancelAll()
+            } catch (e: Exception) {
+                _error.update { e.message }
+            }
+        }
+    }
+
+    fun onNotificationPermissionResult(granted: Boolean) {
+        _needsNotificationPermission.value = false
+        if (granted) {
+            settingsRepository.setNotificationsEnabled(true)
+            try {
+                notificationHelper.scheduleDailySummary()
+            } catch (e: Exception) {
+                _error.update { e.message }
+            }
+        } else {
+            settingsRepository.setNotificationsEnabled(false)
         }
     }
 
