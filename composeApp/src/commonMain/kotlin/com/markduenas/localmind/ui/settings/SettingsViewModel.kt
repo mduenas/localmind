@@ -94,7 +94,26 @@ class SettingsViewModel(
         settingsRepository.selectedLlmModel,
         _error,
         _downloadState,
-    ) { llm, notifications, selectedModel, error, downloadState ->
+        _needsNotificationPermission,
+        settingsRepository.premiumActive,
+        billingRepository.products,
+        _showPaywall,
+        _purchaseInProgress,
+        _restoreInProgress,
+    ) { values ->
+        val llm = values[0] as Boolean
+        val notifications = values[1] as Boolean
+        val selectedModel = values[2] as String
+        val error = values[3] as String?
+        val downloadState = values[4] as ModelDownloadState
+        val needsPermission = values[5] as Boolean
+        val isPremium = values[6] as Boolean
+        @Suppress("UNCHECKED_CAST")
+        val products = values[7] as List<com.markduenas.localmind.billing.BillingProduct>
+        val showPaywall = values[8] as Boolean
+        val purchaseInProgress = values[9] as Boolean
+        val restoreInProgress = values[10] as Boolean
+
         val downloaded = modelManager.getDownloadedModels()
         val effectiveSelected = selectedModel.ifEmpty { AIConfig.DEFAULT_LLM_MODEL }
         SettingsUiState(
@@ -104,12 +123,12 @@ class SettingsViewModel(
             selectedLlmModel = effectiveSelected,
             downloadState = downloadState,
             error = error,
-            needsNotificationPermission = _needsNotificationPermission.value,
-            isPremium = settingsRepository.premiumActive.value,
-            products = billingRepository.products.value,
-            showPaywall = _showPaywall.value,
-            purchaseInProgress = _purchaseInProgress.value,
-            restoreInProgress = _restoreInProgress.value,
+            needsNotificationPermission = needsPermission,
+            isPremium = isPremium,
+            products = products,
+            showPaywall = showPaywall,
+            purchaseInProgress = purchaseInProgress,
+            restoreInProgress = restoreInProgress,
         )
     }.stateIn(
         viewModelScope,

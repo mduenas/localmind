@@ -1,14 +1,16 @@
 import StoreKit
 import ComposeApp
 
+private typealias AsyncTask = _Concurrency.Task
+
 @available(iOS 15.0, *)
 enum StoreKitBridgeSetup {
 
     static func configure() {
         StoreKitBridge.shared.configure(
             fetchProducts: { ids, completion in
-                let stringIds = ids.compactMap { $0 as? String }
-                Task {
+                let stringIds = ids as [String]
+                AsyncTask {
                     do {
                         let products = try await Product.products(for: Set(stringIds))
                         let dtos: [ComposeApp.StoreKitProduct] = products.map { product in
@@ -29,7 +31,7 @@ enum StoreKitBridgeSetup {
                 }
             },
             purchase: { productId, completion in
-                Task {
+                AsyncTask {
                     do {
                         let products = try await Product.products(for: [productId])
                         guard let product = products.first else {
@@ -60,7 +62,7 @@ enum StoreKitBridgeSetup {
                 }
             },
             restore: { completion in
-                Task {
+                AsyncTask {
                     var hasPremium = false
                     for await result in Transaction.currentEntitlements {
                         if case .verified(_) = result {
