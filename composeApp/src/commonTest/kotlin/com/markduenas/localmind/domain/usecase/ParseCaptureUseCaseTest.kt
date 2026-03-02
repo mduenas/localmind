@@ -46,7 +46,7 @@ class ParseCaptureUseCaseTest {
     }
 
     @Test
-    fun llmEnabledAndSuccessUsesTaskParser() = runBlocking {
+    fun llmEnabledAndPremiumUsesTaskParser() = runBlocking {
         val parsed = ParsedTask(
             title = "Buy groceries",
             dueDate = null,
@@ -61,6 +61,7 @@ class ParseCaptureUseCaseTest {
             taskParser = StubTaskParser(result = parsed),
             ruleBasedParser = ruleBasedParser,
             isLLMEnabled = { true },
+            isPremium = { true },
         )
 
         val result = useCase("buy groceries")
@@ -72,11 +73,29 @@ class ParseCaptureUseCaseTest {
     }
 
     @Test
-    fun llmEnabledButThrowsFallsBackToRuleBased() = runBlocking {
+    fun llmEnabledButNotPremiumUsesRuleBased() = runBlocking {
         val useCase = ParseCaptureUseCase(
             taskParser = StubTaskParser(shouldThrow = true),
             ruleBasedParser = ruleBasedParser,
             isLLMEnabled = { true },
+            isPremium = { false },
+        )
+
+        val result = useCase("buy groceries tomorrow")
+
+        assertIs<ParseResult.Success>(result)
+        val capture = result.capture
+        assertIs<ParsedCapture.TaskCapture>(capture)
+        assertEquals("Buy groceries", capture.task.title)
+    }
+
+    @Test
+    fun llmEnabledAndPremiumButThrowsFallsBackToRuleBased() = runBlocking {
+        val useCase = ParseCaptureUseCase(
+            taskParser = StubTaskParser(shouldThrow = true),
+            ruleBasedParser = ruleBasedParser,
+            isLLMEnabled = { true },
+            isPremium = { true },
         )
 
         val result = useCase("buy groceries tomorrow")

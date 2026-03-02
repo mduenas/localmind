@@ -16,6 +16,9 @@ class SettingsRepository(private val settings: PlatformSettings) {
     private val _selectedLlmModel = MutableStateFlow(settings.getString(KEY_SELECTED_LLM_MODEL, ""))
     val selectedLlmModel: StateFlow<String> = _selectedLlmModel.asStateFlow()
 
+    private val _premiumActive = MutableStateFlow(settings.getBoolean(KEY_PREMIUM_ACTIVE, false))
+    val premiumActive: StateFlow<Boolean> = _premiumActive.asStateFlow()
+
     fun setLlmEnabled(enabled: Boolean) {
         _llmEnabled.value = enabled
         settings.putBoolean(KEY_LLM_ENABLED, enabled)
@@ -31,6 +34,14 @@ class SettingsRepository(private val settings: PlatformSettings) {
         settings.putString(KEY_SELECTED_LLM_MODEL, slug)
     }
 
+    fun setPremiumActive(active: Boolean, productId: String? = null) {
+        _premiumActive.value = active
+        settings.putBoolean(KEY_PREMIUM_ACTIVE, active)
+        if (productId != null) {
+            settings.putString(KEY_PREMIUM_PRODUCT_ID, productId)
+        }
+    }
+
     fun getString(key: String, default: String = ""): String = settings.getString(key, default)
 
     fun putString(key: String, value: String) {
@@ -41,5 +52,7 @@ class SettingsRepository(private val settings: PlatformSettings) {
         private const val KEY_LLM_ENABLED = "llm_enabled"
         private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
         private const val KEY_SELECTED_LLM_MODEL = "selected_llm_model"
+        private const val KEY_PREMIUM_ACTIVE = "premium_active"
+        private const val KEY_PREMIUM_PRODUCT_ID = "premium_product_id"
     }
 }

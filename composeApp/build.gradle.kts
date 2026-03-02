@@ -55,6 +55,7 @@ kotlin {
             implementation(libs.androidx.security.crypto)
             implementation(libs.androidx.work.runtime)
             implementation(libs.androidx.glance.appwidget)
+            implementation(libs.billing.client)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

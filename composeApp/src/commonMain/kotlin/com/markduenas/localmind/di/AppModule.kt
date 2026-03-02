@@ -6,6 +6,7 @@ import com.markduenas.localmind.ai.RuleBasedParser
 import com.markduenas.localmind.ai.TaskParser
 import com.markduenas.localmind.data.local.DatabaseDriverFactory
 import com.markduenas.localmind.data.local.LocalMindDb
+import com.markduenas.localmind.data.repository.BillingRepository
 import com.markduenas.localmind.data.repository.CaptureRepository
 import com.markduenas.localmind.data.repository.CaptureRepositoryImpl
 import com.markduenas.localmind.data.repository.NoteRepository
@@ -42,6 +43,7 @@ val appModule = module {
     singleOf(::CaptureRepositoryImpl) bind CaptureRepository::class
     singleOf(::NoteRepositoryImpl) bind NoteRepository::class
     singleOf(::SettingsRepository)
+    singleOf(::BillingRepository)
 
     // AI services
     singleOf(::ModelManager)
@@ -60,6 +62,7 @@ val appModule = module {
             taskParser = get(),
             ruleBasedParser = get(),
             isLLMEnabled = { get<SettingsRepository>().llmEnabled.value },
+            isPremium = { get<SettingsRepository>().premiumActive.value },
         )
     }
 

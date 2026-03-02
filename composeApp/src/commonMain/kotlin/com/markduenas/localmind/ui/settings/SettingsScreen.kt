@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -19,8 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.markduenas.localmind.platform.NotificationPermissionEffect
+import com.markduenas.localmind.ui.paywall.PaywallContent
 import org.koin.compose.viewmodel.koinViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = koinViewModel(),
@@ -32,6 +37,24 @@ fun SettingsScreen(
         onResult = viewModel::onNotificationPermissionResult,
     )
 
+    // Paywall bottom sheet
+    if (state.showPaywall) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = viewModel::dismissPaywall,
+            sheetState = sheetState,
+        ) {
+            PaywallContent(
+                products = state.products,
+                purchaseInProgress = state.purchaseInProgress,
+                restoreInProgress = state.restoreInProgress,
+                onPurchase = viewModel::purchaseProduct,
+                onRestore = viewModel::restorePurchases,
+                onDismiss = viewModel::dismissPaywall,
+            )
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -39,6 +62,13 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
+        PremiumStatusSection(
+            isPremium = state.isPremium,
+            onUpgrade = viewModel::showPaywall,
+        )
+
+        HorizontalDivider()
+
         // LLM toggle
         Column {
             Text(
@@ -92,6 +122,10 @@ fun SettingsScreen(
 
         HorizontalDivider()
 
-        ExportSection(onExportTasks = viewModel::exportTasks)
+        ExportSection(
+            onExportTasks = viewModel::exportTasks,
+            isPremium = state.isPremium,
+            onUpgradeRequired = viewModel::showPaywall,
+        )
     }
 }

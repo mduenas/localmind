@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.markduenas.localmind.ai.AIConfig
 import com.markduenas.localmind.ai.ModelManager
 import com.markduenas.localmind.ai.directorySize
+import com.markduenas.localmind.data.repository.BillingRepository
 import com.markduenas.localmind.data.repository.SettingsRepository
 import com.markduenas.localmind.data.repository.TaskRepository
 import com.markduenas.localmind.platform.FileSharer
@@ -45,6 +46,11 @@ data class SettingsUiState(
     val downloadState: ModelDownloadState = ModelDownloadState.Idle,
     val error: String? = null,
     val needsNotificationPermission: Boolean = false,
+    val isPremium: Boolean = false,
+    val products: List<com.markduenas.localmind.billing.BillingProduct> = emptyList(),
+    val showPaywall: Boolean = false,
+    val purchaseInProgress: Boolean = false,
+    val restoreInProgress: Boolean = false,
 )
 
 @Serializable
@@ -71,11 +77,15 @@ class SettingsViewModel(
     private val taskRepository: TaskRepository,
     private val fileSharer: FileSharer,
     private val permissionHelper: PermissionHelper,
+    private val billingRepository: BillingRepository,
 ) : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
     private val _downloadState = MutableStateFlow<ModelDownloadState>(ModelDownloadState.Idle)
     private val _needsNotificationPermission = MutableStateFlow(false)
+    private val _showPaywall = MutableStateFlow(false)
+    private val _purchaseInProgress = MutableStateFlow(false)
+    private val _restoreInProgress = MutableStateFlow(false)
     private var progressJob: Job? = null
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -95,6 +105,11 @@ class SettingsViewModel(
             downloadState = downloadState,
             error = error,
             needsNotificationPermission = _needsNotificationPermission.value,
+            isPremium = settingsRepository.premiumActive.value,
+            products = billingRepository.products.value,
+            showPaywall = _showPaywall.value,
+            purchaseInProgress = _purchaseInProgress.value,
+            restoreInProgress = _restoreInProgress.value,
         )
     }.stateIn(
         viewModelScope,
@@ -106,6 +121,11 @@ class SettingsViewModel(
         if (_downloadState.value is ModelDownloadState.Downloading) return
 
         if (enabled) {
+            // Premium check — show paywall if not premium
+            if (!settingsRepository.premiumActive.value) {
+                _showPaywall.value = true
+                return
+            }
             val defaultModel = AIConfig.DEFAULT_LLM_MODEL
             if (modelManager.isModelDownloaded(defaultModel)) {
                 settingsRepository.setLlmEnabled(true)
@@ -241,6 +261,10 @@ class SettingsViewModel(
     }
 
     fun exportTasks() {
+        if (!settingsRepository.premiumActive.value) {
+            _showPaywall.value = true
+            return
+        }
         viewModelScope.launch {
             try {
                 val tasks = taskRepository.getAllTasks().first()
@@ -263,6 +287,57 @@ class SettingsViewModel(
                 fileSharer.share("localmind-tasks.json", json)
             } catch (e: Exception) {
                 _error.update { "Export failed: ${e.message}" }
+            }
+        }
+    }
+
+    fun showPaywall() {
+        _showPaywall.value = true
+    }
+
+    fun dismissPaywall() {
+        _showPaywall.value = false
+    }
+
+    fun purchaseProduct(productId: String) {
+        viewModelScope.launch {
+            _purchaseInProgress.value = true
+            try {
+                val result = billingRepository.purchase(productId)
+                when (result) {
+                    is com.markduenas.localmind.billing.PurchaseResult.Success,
+                    is com.markduenas.localmind.billing.PurchaseResult.AlreadyOwned -> {
+                        _showPaywall.value = false
+                    }
+                    is com.markduenas.localmind.billing.PurchaseResult.Cancelled -> {
+                        // User cancelled — keep paywall open
+                    }
+                    is com.markduenas.localmind.billing.PurchaseResult.Error -> {
+                        _error.update { result.message }
+                    }
+                }
+            } catch (e: Exception) {
+                _error.update { "Purchase failed: ${e.message}" }
+            } finally {
+                _purchaseInProgress.value = false
+            }
+        }
+    }
+
+    fun restorePurchases() {
+        viewModelScope.launch {
+            _restoreInProgress.value = true
+            try {
+                val restored = billingRepository.restorePurchases()
+                if (restored) {
+                    _showPaywall.value = false
+                } else {
+                    _error.update { "No previous purchases found" }
+                }
+            } catch (e: Exception) {
+                _error.update { "Restore failed: ${e.message}" }
+            } finally {
+                _restoreInProgress.value = false
             }
         }
     }

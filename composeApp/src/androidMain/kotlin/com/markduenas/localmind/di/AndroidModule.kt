@@ -4,6 +4,7 @@ import com.markduenas.localmind.data.local.DatabaseDriverFactory
 import com.markduenas.localmind.notification.SummaryWorkerFactory
 import com.markduenas.localmind.platform.AudioFileProvider
 import com.markduenas.localmind.platform.AudioRecorder
+import com.markduenas.localmind.platform.BillingService
 import com.markduenas.localmind.platform.FileSharer
 import com.markduenas.localmind.platform.NotificationHelper
 import com.markduenas.localmind.platform.PermissionHelper
@@ -23,4 +24,5 @@ val androidModule = module {
     single { AudioFileProvider(get()) }
     single { SummaryWorkerFactory(get()) }
     single { SpeechRecognitionService(get()) }
+    single { BillingService(get()) }
 }
