@@ -1,5 +1,6 @@
 import StoreKit
 import ComposeApp
+import Foundation
 
 private typealias AsyncTask = _Concurrency.Task
 
@@ -24,9 +25,9 @@ enum StoreKitBridgeSetup {
                                 isSubscription: product.type == .autoRenewable
                             )
                         }
-                        completion(dtos)
+                        DispatchQueue.main.async { completion(dtos) }
                     } catch {
-                        completion(nil)
+                        DispatchQueue.main.async { completion(nil) }
                     }
                 }
             },
@@ -35,7 +36,7 @@ enum StoreKitBridgeSetup {
                     do {
                         let products = try await Product.products(for: [productId])
                         guard let product = products.first else {
-                            completion(3) // error
+                            DispatchQueue.main.async { completion(3) }
                             return
                         }
 
@@ -45,19 +46,19 @@ enum StoreKitBridgeSetup {
                             switch verification {
                             case .verified(let transaction):
                                 await transaction.finish()
-                                completion(0) // success
+                                DispatchQueue.main.async { completion(0) }
                             case .unverified:
-                                completion(3) // error - verification failed
+                                DispatchQueue.main.async { completion(3) }
                             }
                         case .userCancelled:
-                            completion(1) // cancelled
+                            DispatchQueue.main.async { completion(1) }
                         case .pending:
-                            completion(3) // pending treated as error for now
+                            DispatchQueue.main.async { completion(3) }
                         @unknown default:
-                            completion(3) // error
+                            DispatchQueue.main.async { completion(3) }
                         }
                     } catch {
-                        completion(3) // error
+                        DispatchQueue.main.async { completion(3) }
                     }
                 }
             },
@@ -70,7 +71,7 @@ enum StoreKitBridgeSetup {
                             break
                         }
                     }
-                    completion(KotlinBoolean(bool: hasPremium))
+                    DispatchQueue.main.async { completion(KotlinBoolean(bool: hasPremium)) }
                 }
             }
         )
