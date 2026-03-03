@@ -7,6 +7,20 @@ private typealias AsyncTask = _Concurrency.Task
 @available(iOS 15.0, *)
 enum StoreKitBridgeSetup {
 
+    /// Holds the long-running Transaction.updates task so it isn't deallocated.
+    private static var updatesTask: AsyncTask<Void, Never>?
+
+    /// Must be called at app launch to observe transaction updates.
+    static func listenForTransactions() {
+        updatesTask = AsyncTask(priority: .background) {
+            for await result in Transaction.updates {
+                if case .verified(let transaction) = result {
+                    await transaction.finish()
+                }
+            }
+        }
+    }
+
     static func configure() {
         StoreKitBridge.shared.configure(
             fetchProducts: { ids, completion in
@@ -32,33 +46,43 @@ enum StoreKitBridgeSetup {
                 }
             },
             purchase: { productId, completion in
-                AsyncTask {
-                    do {
-                        let products = try await Product.products(for: [productId])
-                        guard let product = products.first else {
-                            DispatchQueue.main.async { completion(3) }
-                            return
-                        }
-
-                        let result = try await product.purchase()
-                        switch result {
-                        case .success(let verification):
-                            switch verification {
-                            case .verified(let transaction):
-                                await transaction.finish()
-                                DispatchQueue.main.async { completion(0) }
-                            case .unverified:
-                                DispatchQueue.main.async { completion(3) }
+                DispatchQueue.main.async {
+                    AsyncTask { @MainActor in
+                        do {
+                            // Check if already owned (non-consumable)
+                            if let existing = await Transaction.latest(for: productId),
+                               case .verified(let txn) = existing,
+                               txn.revocationDate == nil {
+                                completion(2) // alreadyOwned
+                                return
                             }
-                        case .userCancelled:
-                            DispatchQueue.main.async { completion(1) }
-                        case .pending:
-                            DispatchQueue.main.async { completion(3) }
-                        @unknown default:
-                            DispatchQueue.main.async { completion(3) }
+
+                            let products = try await Product.products(for: [productId])
+                            guard let product = products.first else {
+                                completion(3) // error
+                                return
+                            }
+
+                            let result = try await product.purchase()
+                            switch result {
+                            case .success(let verification):
+                                switch verification {
+                                case .verified(let transaction):
+                                    await transaction.finish()
+                                    completion(0) // success
+                                case .unverified:
+                                    completion(3) // error
+                                }
+                            case .userCancelled:
+                                completion(1) // cancelled
+                            case .pending:
+                                completion(3) // error
+                            @unknown default:
+                                completion(3) // error
+                            }
+                        } catch {
+                            completion(3) // error
                         }
-                    } catch {
-                        DispatchQueue.main.async { completion(3) }
                     }
                 }
             },
