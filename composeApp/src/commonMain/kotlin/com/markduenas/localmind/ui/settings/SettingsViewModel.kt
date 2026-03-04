@@ -3,17 +3,15 @@ package com.markduenas.localmind.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.markduenas.localmind.ai.AIConfig
+import com.markduenas.localmind.ai.ModelDownloadService
+import com.markduenas.localmind.ai.ModelDownloadState
 import com.markduenas.localmind.ai.ModelManager
-import com.markduenas.localmind.ai.directorySize
 import com.markduenas.localmind.data.repository.BillingRepository
 import com.markduenas.localmind.data.repository.SettingsRepository
 import com.markduenas.localmind.data.repository.TaskRepository
 import com.markduenas.localmind.platform.FileSharer
 import com.markduenas.localmind.platform.NotificationHelper
 import com.markduenas.localmind.platform.PermissionHelper
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,18 +19,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-
-sealed interface ModelDownloadState {
-    data object Idle : ModelDownloadState
-    data class Downloading(val slug: String, val progress: Float) : ModelDownloadState
-    data class Failed(val slug: String, val error: String) : ModelDownloadState
-}
 
 data class SettingsUiState(
     val llmEnabled: Boolean = false,
@@ -78,22 +68,40 @@ class SettingsViewModel(
     private val fileSharer: FileSharer,
     private val permissionHelper: PermissionHelper,
     private val billingRepository: BillingRepository,
+    private val modelDownloadService: ModelDownloadService,
 ) : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
-    private val _downloadState = MutableStateFlow<ModelDownloadState>(ModelDownloadState.Idle)
     private val _needsNotificationPermission = MutableStateFlow(false)
     private val _showPaywall = MutableStateFlow(false)
     private val _purchaseInProgress = MutableStateFlow(false)
     private val _restoreInProgress = MutableStateFlow(false)
-    private var progressJob: Job? = null
+
+    init {
+        // Auto-enable LLM when download completes
+        viewModelScope.launch {
+            modelDownloadService.state.collect { downloadState ->
+                if (downloadState is ModelDownloadState.Idle) {
+                    // Check if a model just finished downloading (download service transitions to Idle on success)
+                    val downloaded = modelManager.getDownloadedModels().filter { it !in AIConfig.STT_MODELS }
+                    if (downloaded.isNotEmpty() && !settingsRepository.llmEnabled.value) {
+                        val currentSelected = settingsRepository.selectedLlmModel.value
+                        if (currentSelected.isEmpty() || !modelManager.isModelDownloaded(currentSelected)) {
+                            settingsRepository.setSelectedLlmModel(downloaded.first())
+                        }
+                        settingsRepository.setLlmEnabled(true)
+                    }
+                }
+            }
+        }
+    }
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.llmEnabled,
         settingsRepository.notificationsEnabled,
         settingsRepository.selectedLlmModel,
         _error,
-        _downloadState,
+        modelDownloadService.state,
         _needsNotificationPermission,
         settingsRepository.premiumActive,
         billingRepository.products,
@@ -137,10 +145,9 @@ class SettingsViewModel(
     )
 
     fun setLlmEnabled(enabled: Boolean) {
-        if (_downloadState.value is ModelDownloadState.Downloading) return
+        if (modelDownloadService.state.value is ModelDownloadState.Downloading) return
 
         if (enabled) {
-            // Premium check — show paywall if not premium
             if (!settingsRepository.premiumActive.value) {
                 _showPaywall.value = true
                 return
@@ -149,7 +156,7 @@ class SettingsViewModel(
             if (modelManager.isModelDownloaded(defaultModel)) {
                 settingsRepository.setLlmEnabled(true)
             } else {
-                startDownload(defaultModel)
+                modelDownloadService.startDownload(defaultModel)
             }
         } else {
             settingsRepository.setLlmEnabled(false)
@@ -157,66 +164,15 @@ class SettingsViewModel(
     }
 
     fun requestModelDownload(slug: String) {
-        if (_downloadState.value is ModelDownloadState.Downloading) return
-        if (modelManager.isModelDownloaded(slug)) return
-        startDownload(slug)
-    }
-
-    private fun startDownload(slug: String) {
-        _downloadState.value = ModelDownloadState.Downloading(slug, progress = -1f)
-
-        // Poll the models directory to estimate progress
-        val expectedBytes = AIConfig.MODEL_BYTES[slug]
-        val modelsDir = try { modelManager.getModelsDirectory() } catch (_: Exception) { null }
-        val baselineSize = modelsDir?.let { try { directorySize(it) } catch (_: Exception) { 0L } } ?: 0L
-
-        progressJob?.cancel()
-        if (modelsDir != null && expectedBytes != null && expectedBytes > 0) {
-            progressJob = viewModelScope.launch {
-                while (isActive) {
-                    delay(500)
-                    val currentSize = try { directorySize(modelsDir) - baselineSize } catch (_: Exception) { 0L }
-                    val pct = (currentSize.toFloat() / expectedBytes).coerceIn(0f, 0.99f)
-                    _downloadState.value = ModelDownloadState.Downloading(slug, progress = pct)
-                }
-            }
-        }
-
-        viewModelScope.launch {
-            try {
-                withContext(NonCancellable) {
-                    modelManager.downloadModel(slug)
-                }
-                progressJob?.cancel()
-                // Auto-select first downloaded LLM model if none selected
-                if (slug !in AIConfig.STT_MODELS) {
-                    val currentSelected = settingsRepository.selectedLlmModel.value
-                    if (currentSelected.isEmpty() || !modelManager.isModelDownloaded(currentSelected)) {
-                        settingsRepository.setSelectedLlmModel(slug)
-                    }
-                    settingsRepository.setLlmEnabled(true)
-                }
-                _downloadState.value = ModelDownloadState.Idle
-            } catch (e: Exception) {
-                progressJob?.cancel()
-                // Show the root cause for debugging
-                val rootCause = generateSequence<Throwable>(e) { it.cause }.last()
-                val detail = if (rootCause !== e) "${e.message} (${rootCause::class.simpleName}: ${rootCause.message})" else e.message
-                _downloadState.value = ModelDownloadState.Failed(
-                    slug = slug,
-                    error = detail ?: "Download failed",
-                )
-            }
-        }
+        modelDownloadService.startDownload(slug)
     }
 
     fun retryDownload() {
-        val failed = _downloadState.value as? ModelDownloadState.Failed ?: return
-        startDownload(failed.slug)
+        modelDownloadService.retryDownload()
     }
 
     fun dismissDownloadError() {
-        _downloadState.value = ModelDownloadState.Idle
+        modelDownloadService.dismissError()
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
@@ -262,14 +218,12 @@ class SettingsViewModel(
     fun deleteModel(slug: String) {
         try {
             modelManager.deleteModel(slug)
-            // If deleting the selected model, fall back to default or first available
             if (slug == settingsRepository.selectedLlmModel.value) {
                 val remaining = modelManager.getDownloadedModels()
                     .filter { it !in AIConfig.STT_MODELS && it != slug }
                 val fallback = remaining.firstOrNull() ?: AIConfig.DEFAULT_LLM_MODEL
                 settingsRepository.setSelectedLlmModel(fallback)
             }
-            // If no LLM models remain, disable LLM
             val hasLlm = modelManager.getDownloadedModels().any { it !in AIConfig.STT_MODELS }
             if (!hasLlm && settingsRepository.llmEnabled.value) {
                 settingsRepository.setLlmEnabled(false)

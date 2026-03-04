@@ -1,5 +1,6 @@
 package com.markduenas.localmind.di
 
+import com.markduenas.localmind.ai.BackgroundTaskRunner
 import com.markduenas.localmind.data.local.DatabaseDriverFactory
 import com.markduenas.localmind.platform.AudioFileProvider
 import com.markduenas.localmind.platform.AudioRecorder
@@ -23,4 +24,5 @@ val iosModule = module {
     single { AudioFileProvider() }
     single { SpeechRecognitionService() }
     single { BillingService() }
+    single { BackgroundTaskRunner() }
 }

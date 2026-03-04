@@ -1,5 +1,6 @@
 package com.markduenas.localmind.di
 
+import com.markduenas.localmind.ai.BackgroundTaskRunner
 import com.markduenas.localmind.data.local.DatabaseDriverFactory
 import com.markduenas.localmind.notification.SummaryWorkerFactory
 import com.markduenas.localmind.platform.AudioFileProvider
@@ -25,4 +26,5 @@ val androidModule = module {
     single { SummaryWorkerFactory(get()) }
     single { SpeechRecognitionService(get()) }
     single { BillingService(get()) }
+    single { BackgroundTaskRunner() }
 }

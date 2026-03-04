@@ -48,6 +48,16 @@ class NoteListViewModel(
         }
     }
 
+    fun undoDelete(note: Note) {
+        viewModelScope.launch {
+            try {
+                noteRepository.createNote(note)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }

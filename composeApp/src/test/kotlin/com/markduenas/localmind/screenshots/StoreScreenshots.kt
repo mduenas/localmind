@@ -50,7 +50,7 @@ import com.markduenas.localmind.ui.notes.NoteCard
 import com.markduenas.localmind.ui.paywall.PaywallContent
 import com.markduenas.localmind.ui.settings.ExportSection
 import com.markduenas.localmind.ui.settings.ModelManagementSection
-import com.markduenas.localmind.ui.settings.ModelDownloadState
+import com.markduenas.localmind.ai.ModelDownloadState
 import com.markduenas.localmind.ui.settings.NotificationSection
 import com.markduenas.localmind.ui.settings.PremiumStatusSection
 import com.markduenas.localmind.ui.tasks.TaskCard

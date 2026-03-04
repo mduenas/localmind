@@ -6,11 +6,10 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -24,9 +23,10 @@ fun NoteCard(
     note: Note,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
     ) {
@@ -57,7 +57,7 @@ fun NoteCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     note.tags.forEach { tag ->
-                        AssistChip(
+                        SuggestionChip(
                             onClick = {},
                             label = {
                                 Text(
@@ -65,7 +65,6 @@ fun NoteCard(
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                             },
-                            modifier = Modifier.size(height = 24.dp, width = 64.dp),
                         )
                     }
                 }

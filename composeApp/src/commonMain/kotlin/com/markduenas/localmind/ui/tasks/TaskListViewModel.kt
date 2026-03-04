@@ -90,6 +90,16 @@ class TaskListViewModel(
         }
     }
 
+    fun undoDelete(task: Task) {
+        viewModelScope.launch {
+            try {
+                taskRepository.createTask(task)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
