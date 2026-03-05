@@ -121,6 +121,31 @@ class RuleBasedParserTest {
     }
 
     @Test
+    fun parsesTimeWithSpaceBeforePm() {
+        val result = parseAsTask("meeting tomorrow at 3 pm")
+        assertEquals(LocalTime(15, 0), result.dueTime)
+    }
+
+    @Test
+    fun parsesTimePmWithPeriods() {
+        val result = parseAsTask("meeting tomorrow at 3 p.m.")
+        assertEquals(LocalTime(15, 0), result.dueTime)
+    }
+
+    @Test
+    fun parsesTimeAmWithPeriods() {
+        val result = parseAsTask("standup at 9:30 a.m.")
+        assertEquals(LocalTime(9, 30), result.dueTime)
+    }
+
+    @Test
+    fun parsesTimeWithNonBreakingSpace() {
+        // Android voice input sometimes inserts non-breaking space (U+00A0)
+        val result = parseAsTask("meeting at 3\u00A0pm tomorrow")
+        assertEquals(LocalTime(15, 0), result.dueTime)
+    }
+
+    @Test
     fun parsesNoTimeReturnsNull() {
         val result = parseAsTask("buy groceries tomorrow")
         assertNull(result.dueTime)

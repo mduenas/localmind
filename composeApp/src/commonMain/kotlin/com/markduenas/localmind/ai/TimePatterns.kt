@@ -4,8 +4,18 @@ import kotlinx.datetime.LocalTime
 
 internal object TimePatterns {
 
+    /**
+     * Normalises whitespace (including non-breaking spaces from Android voice
+     * input) and strips periods from am/pm so all patterns see clean input.
+     */
+    private fun normalise(text: String): String =
+        text.replace('\u00A0', ' ')   // non-breaking space
+            .replace('\u202F', ' ')   // narrow no-break space
+            .replace(Regex("(?<=[ap])\\.(?=m\\.?)", RegexOption.IGNORE_CASE), "") // a.m. → am
+            .replace(Regex("(?<=[ap]m)\\.", RegexOption.IGNORE_CASE), "")         // am. → am
+
     private val patterns = listOf(
-        // "at 3pm", "at 3:30pm", "at 15:00"
+        // "at 3pm", "at 3:30pm", "at 3 pm"
         Regex(
             "\\bat\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)\\b",
             RegexOption.IGNORE_CASE
@@ -25,7 +35,7 @@ internal object TimePatterns {
             )
         },
 
-        // Standalone "3pm", "3:30pm"
+        // Standalone "3pm", "3:30pm", "3 pm"
         Regex(
             "\\b(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)\\b",
             RegexOption.IGNORE_CASE
@@ -39,8 +49,9 @@ internal object TimePatterns {
     )
 
     fun extract(text: String): LocalTime? {
+        val cleaned = normalise(text)
         for ((pattern, resolver) in patterns) {
-            val match = pattern.find(text) ?: continue
+            val match = pattern.find(cleaned) ?: continue
             val time = resolver(match)
             if (time != null) return time
         }
@@ -48,7 +59,7 @@ internal object TimePatterns {
     }
 
     fun removePatterns(text: String): String {
-        var result = text
+        var result = normalise(text)
         for ((pattern, _) in patterns) {
             result = pattern.replace(result, "")
         }
