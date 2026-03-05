@@ -1,21 +1,27 @@
 package com.markduenas.localmind.ai
 
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import platform.UIKit.UIApplication
-import kotlin.coroutines.resume
+import platform.UIKit.UIBackgroundTaskInvalid
 
 actual class BackgroundTaskRunner {
     actual suspend fun <T> runInBackground(block: suspend () -> T): T {
-        val app = UIApplication.sharedApplication
-        var taskId = platform.UIKit.UIBackgroundTaskInvalid
-        taskId = app.beginBackgroundTaskWithName("ModelDownload") {
-            app.endBackgroundTask(taskId)
+        // Begin/end background task on the main thread (UIKit requirement)
+        var taskId = UIBackgroundTaskInvalid
+        withContext(Dispatchers.Main) {
+            taskId = UIApplication.sharedApplication.beginBackgroundTaskWithName("ModelDownload") {
+                UIApplication.sharedApplication.endBackgroundTask(taskId)
+            }
         }
         return try {
             block()
         } finally {
-            if (taskId != platform.UIKit.UIBackgroundTaskInvalid) {
-                app.endBackgroundTask(taskId)
+            val id = taskId
+            if (id != UIBackgroundTaskInvalid) {
+                withContext(Dispatchers.Main) {
+                    UIApplication.sharedApplication.endBackgroundTask(id)
+                }
             }
         }
     }

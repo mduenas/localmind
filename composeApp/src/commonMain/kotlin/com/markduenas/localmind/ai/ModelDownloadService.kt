@@ -58,7 +58,7 @@ class ModelDownloadService(
                 }
                 progressJob?.cancel()
                 _state.value = ModelDownloadState.Idle
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 progressJob?.cancel()
                 val rootCause = generateSequence<Throwable>(e) { it.cause }.last()
                 val detail = if (rootCause !== e) {
