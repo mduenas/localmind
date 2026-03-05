@@ -17,7 +17,7 @@ internal object TimePatterns {
     private val patterns = listOf(
         // "at 3pm", "at 3:30pm", "at 3 pm"
         Regex(
-            "\\bat\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)\\b",
+            "\\bat\\s+(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm)\\b",
             RegexOption.IGNORE_CASE
         ) to { m: MatchResult ->
             resolve12Hour(
@@ -28,7 +28,7 @@ internal object TimePatterns {
         },
 
         // "at 15:00", "at 9:30"
-        Regex("\\bat\\s+(\\d{1,2}):(\\d{2})\\b") to { m: MatchResult ->
+        Regex("\\bat\\s+(\\d{1,2})[:.](\\d{2})\\b") to { m: MatchResult ->
             resolve24Hour(
                 m.groupValues[1].toIntOrNull() ?: return@to null,
                 m.groupValues[2].toIntOrNull() ?: 0
@@ -37,7 +37,7 @@ internal object TimePatterns {
 
         // Standalone "3pm", "3:30pm", "3 pm"
         Regex(
-            "\\b(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)\\b",
+            "\\b(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm)\\b",
             RegexOption.IGNORE_CASE
         ) to { m: MatchResult ->
             resolve12Hour(

@@ -50,7 +50,8 @@ class LLMService(
 
     suspend fun generateCompletion(
         systemPrompt: String,
-        userPrompt: String
+        userPrompt: String,
+        maxTokens: Int = AIConfig.MAX_TOKENS_MEDIUM_INPUT,
     ): String {
         val lm = cactusLM ?: throw IllegalStateException("LLM not initialized — call initialize() first")
 
@@ -66,7 +67,7 @@ class LLMService(
                     lm.generateCompletion(
                         messages = messages,
                         params = CactusCompletionParams(
-                            maxTokens = AIConfig.MAX_TOKENS,
+                            maxTokens = maxTokens,
                             temperature = AIConfig.TEMPERATURE
                         )
                     )

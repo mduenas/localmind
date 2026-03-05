@@ -6,12 +6,14 @@ object AIConfig {
     const val FALLBACK_LLM_MODEL = "gemma3-270m"
 
     // Generation parameters
-    const val MAX_TOKENS = 128
+    const val MAX_TOKENS_SHORT_INPUT = 56
+    const val MAX_TOKENS_MEDIUM_INPUT = 80
+    const val MAX_TOKENS_LONG_INPUT = 112
     const val TEMPERATURE = 0.2
     const val CONTEXT_SIZE = 2048
 
     // Performance budgets
-    const val LLM_TIMEOUT_MS = 10_000L
+    const val LLM_TIMEOUT_MS = 12_000L
 
     // Approximate download sizes for user-facing display
     val MODEL_SIZES = mapOf(

@@ -181,10 +181,37 @@ fun FieldEditor(
 }
 
 private fun parseTime(text: String): LocalTime? {
-    return try {
-        val parts = text.split(":")
-        if (parts.size == 2) LocalTime(parts[0].toInt(), parts[1].toInt()) else null
-    } catch (_: Exception) {
-        null
+    val cleaned = text
+        .trim()
+        .replace('\u00A0', ' ')
+        .replace('\u202F', ' ')
+        .replace(Regex("(?<=[ap])\\.(?=m\\.?)", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("(?<=[ap]m)\\.", RegexOption.IGNORE_CASE), "")
+
+    val twelveHour = Regex(
+        "^(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm)$",
+        RegexOption.IGNORE_CASE
+    ).matchEntire(cleaned)
+    if (twelveHour != null) {
+        val hour = twelveHour.groupValues[1].toIntOrNull() ?: return null
+        val minute = twelveHour.groupValues[2].toIntOrNull() ?: 0
+        if (hour !in 1..12 || minute !in 0..59) return null
+        val amPm = twelveHour.groupValues[3]
+        val resolvedHour = when {
+            amPm.equals("am", ignoreCase = true) && hour == 12 -> 0
+            amPm.equals("pm", ignoreCase = true) && hour != 12 -> hour + 12
+            else -> hour
+        }
+        return LocalTime(resolvedHour, minute)
     }
+
+    val twentyFourHour = Regex("^(\\d{1,2})[:.](\\d{2})$").matchEntire(cleaned)
+    if (twentyFourHour != null) {
+        val hour = twentyFourHour.groupValues[1].toIntOrNull() ?: return null
+        val minute = twentyFourHour.groupValues[2].toIntOrNull() ?: return null
+        if (hour !in 0..23 || minute !in 0..59) return null
+        return LocalTime(hour, minute)
+    }
+
+    return null
 }

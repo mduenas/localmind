@@ -17,12 +17,14 @@ open class TaskParser(
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
         val systemPrompt = Prompts.SYSTEM_PROMPT
         val userPrompt = Prompts.buildUserPrompt(rawText, today)
+        val maxTokens = maxTokensForInput(rawText)
         val modelName = llmService!!.currentModel ?: "unknown"
 
         val (response, duration) = measureTimedValue {
             llmService!!.generateCompletion(
                 systemPrompt = systemPrompt,
-                userPrompt = userPrompt
+                userPrompt = userPrompt,
+                maxTokens = maxTokens,
             )
         }
 
@@ -36,5 +38,14 @@ open class TaskParser(
             method = "llm",
         )
         return ParseOutput(capture, log)
+    }
+
+    private fun maxTokensForInput(rawText: String): Int {
+        val len = rawText.trim().length
+        return when {
+            len <= 80 -> AIConfig.MAX_TOKENS_SHORT_INPUT
+            len <= 200 -> AIConfig.MAX_TOKENS_MEDIUM_INPUT
+            else -> AIConfig.MAX_TOKENS_LONG_INPUT
+        }
     }
 }

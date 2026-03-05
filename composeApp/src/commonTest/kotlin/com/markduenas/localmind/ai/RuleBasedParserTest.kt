@@ -133,6 +133,12 @@ class RuleBasedParserTest {
     }
 
     @Test
+    fun parsesTimeWithDotSeparatorAndPeriods() {
+        val result = parseAsTask("Pick up some donuts today at 3.30 p.m.")
+        assertEquals(LocalTime(15, 30), result.dueTime)
+    }
+
+    @Test
     fun parsesTimeAmWithPeriods() {
         val result = parseAsTask("standup at 9:30 a.m.")
         assertEquals(LocalTime(9, 30), result.dueTime)
