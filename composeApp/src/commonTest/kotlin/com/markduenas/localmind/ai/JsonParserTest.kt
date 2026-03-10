@@ -117,4 +117,27 @@ class JsonParserTest {
         val capture = JsonParser.parse(json, "buy groceries")
         assertIs<ParsedCapture.TaskCapture>(capture)
     }
+
+    @Test
+    fun parsesPriorityObjectWithName() {
+        val json = """{"title":"Get milk","due_date":"2026-03-12","priority":{"name":"low"},"tags":[],"confidence":0.7}"""
+        val result = parseAsTask(json, "get milk on thursday")
+        assertEquals(Priority.LOW, result.priority)
+    }
+
+    @Test
+    fun parsesTagsWhenModelReturnsSingleString() {
+        val json = """{"title":"Fix bug","priority":"high","tags":"work"}"""
+        val result = parseAsTask(json, "fix bug #work")
+        assertEquals(listOf("work"), result.tags)
+    }
+
+    @Test
+    fun parsesNestedNoteObject() {
+        val json = """{"note":{"title":"Great sushi","body":"Great sushi on Main St"},"tags":["food"]}"""
+        val capture = JsonParser.parse(json, "great sushi on Main St")
+        assertIs<ParsedCapture.NoteCapture>(capture)
+        assertEquals("Great sushi", capture.note.title)
+        assertEquals("Great sushi on Main St", capture.note.body)
+    }
 }

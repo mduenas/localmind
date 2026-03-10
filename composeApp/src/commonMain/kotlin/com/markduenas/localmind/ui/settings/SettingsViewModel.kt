@@ -30,7 +30,7 @@ data class SettingsUiState(
     val downloadedModels: List<String> = emptyList(),
     val availableModels: List<String> = listOf(
         AIConfig.DEFAULT_LLM_MODEL,
-        AIConfig.FALLBACK_LLM_MODEL,
+        AIConfig.FUNCTION_TINY_LLM_MODEL,
     ),
     val selectedLlmModel: String = AIConfig.DEFAULT_LLM_MODEL,
     val downloadState: ModelDownloadState = ModelDownloadState.Idle,

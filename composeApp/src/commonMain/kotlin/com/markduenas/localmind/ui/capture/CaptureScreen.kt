@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.markduenas.localmind.platform.SpeechActivityFallbackEffect
 import com.markduenas.localmind.platform.SpeechPermissionEffect
 import com.markduenas.localmind.platform.SpeechRecognitionService
+import kotlinx.coroutines.flow.collect
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -62,6 +63,12 @@ fun CaptureScreen(
         state.error?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.autoSubmit.collect { text ->
+            onSubmit(text)
         }
     }
 

@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.markduenas.localmind.platform.PermissionHelper
 import com.markduenas.localmind.platform.SpeechRecognitionService
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -24,6 +27,8 @@ class CaptureViewModel(
 
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
+    private val _autoSubmit = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val autoSubmit: SharedFlow<String> = _autoSubmit.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -35,6 +40,9 @@ class CaptureViewModel(
             speechService.result.collect { result ->
                 if (result.text.isNotEmpty()) {
                     _uiState.update { it.copy(inputText = result.text) }
+                }
+                if (result.isFinal && result.error == null && result.text.isNotBlank()) {
+                    _autoSubmit.tryEmit(result.text.trim())
                 }
                 result.error?.let { error ->
                     _uiState.update { it.copy(error = error) }

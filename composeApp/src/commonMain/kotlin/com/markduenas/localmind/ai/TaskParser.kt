@@ -7,10 +7,20 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 
 data class ParseOutput(val capture: ParsedCapture, val log: InferenceLog)
+data class LLMParseException(
+    val model: String,
+    val systemPrompt: String,
+    val userPrompt: String,
+    val rawResponse: String,
+    val durationMs: Long,
+    val parseError: Throwable,
+) : Exception("Failed to parse LLM response: ${parseError.message}", parseError)
 
 open class TaskParser(
     private val llmService: LLMService?
 ) {
+    open fun currentModelForLogging(): String = llmService?.currentModel ?: "unknown"
+
     open suspend fun parse(rawText: String): ParseOutput {
         if (!llmService!!.isLoaded) llmService!!.initialize()
 
@@ -28,7 +38,18 @@ open class TaskParser(
             )
         }
 
-        val capture = JsonParser.parse(response, rawText)
+        val capture = try {
+            JsonParser.parse(response, rawText)
+        } catch (e: Exception) {
+            throw LLMParseException(
+                model = modelName,
+                systemPrompt = systemPrompt,
+                userPrompt = userPrompt,
+                rawResponse = response,
+                durationMs = duration.inWholeMilliseconds,
+                parseError = e,
+            )
+        }
         val log = InferenceLog(
             model = modelName,
             systemPrompt = systemPrompt,

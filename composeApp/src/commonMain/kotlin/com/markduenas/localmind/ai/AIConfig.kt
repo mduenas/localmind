@@ -2,8 +2,9 @@ package com.markduenas.localmind.ai
 
 object AIConfig {
     // LLM models
-    const val DEFAULT_LLM_MODEL = "qwen3-0.6"
-    const val FALLBACK_LLM_MODEL = "gemma3-270m"
+    const val TINY_LLM_MODEL = "gemma3-270m"
+    const val FUNCTION_TINY_LLM_MODEL = "google/functiongemma-270m-it"
+    const val DEFAULT_LLM_MODEL = TINY_LLM_MODEL
 
     // Generation parameters
     const val MAX_TOKENS_SHORT_INPUT = 56
@@ -13,12 +14,12 @@ object AIConfig {
     const val CONTEXT_SIZE = 2048
 
     // Performance budgets
-    const val LLM_TIMEOUT_MS = 12_000L
+    const val LLM_TIMEOUT_MS = 8_000L
 
     // Approximate download sizes for user-facing display
     val MODEL_SIZES = mapOf(
-        DEFAULT_LLM_MODEL to "~400 MB",
-        FALLBACK_LLM_MODEL to "~200 MB",
+        TINY_LLM_MODEL to "~200 MB",
+        FUNCTION_TINY_LLM_MODEL to "~180 MB",
     )
 
     // STT model slugs — no longer used (platform-native speech recognition)
@@ -26,7 +27,7 @@ object AIConfig {
 
     // Approximate download sizes in bytes for progress estimation
     val MODEL_BYTES = mapOf(
-        DEFAULT_LLM_MODEL to 400_000_000L,
-        FALLBACK_LLM_MODEL to 200_000_000L,
+        TINY_LLM_MODEL to 200_000_000L,
+        FUNCTION_TINY_LLM_MODEL to 180_000_000L,
     )
 }
