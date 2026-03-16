@@ -140,4 +140,31 @@ class JsonParserTest {
         assertEquals("Great sushi", capture.note.title)
         assertEquals("Great sushi on Main St", capture.note.body)
     }
+
+    @Test
+    fun recoversMalformedMergedResponseFromTinyModel() {
+        val json = """
+            ```json
+            {"type":{"type":"task"},
+            {"note":{"title":"..."},body:null}
+            ```<end_of_turn>
+        """.trimIndent()
+
+        val result = parseAsTask(json, "buy chicken feed today")
+
+        assertEquals("buy chicken feed today", result.title)
+        assertNull(result.dueDate)
+        assertNull(result.dueTime)
+        assertEquals(Priority.MEDIUM, result.priority)
+    }
+
+    @Test
+    fun recoversNoteWithUnquotedBodyKey() {
+        val json = """{"type":"note","note":{"title":"Trip ideas"},body:"Visit Boise in April","tags":["travel"]}"""
+        val capture = JsonParser.parse(json, "visit boise in april")
+        assertIs<ParsedCapture.NoteCapture>(capture)
+        assertEquals("Trip ideas", capture.note.title)
+        assertEquals("Visit Boise in April", capture.note.body)
+        assertEquals(listOf("travel"), capture.note.tags)
+    }
 }

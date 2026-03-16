@@ -22,33 +22,73 @@ open class TaskParser(
     open fun currentModelForLogging(): String = llmService?.currentModel ?: "unknown"
 
     open suspend fun parse(rawText: String): ParseOutput {
-        if (!llmService!!.isLoaded) llmService!!.initialize()
+        val service = llmService ?: throw LLMException("LLM service unavailable")
+        if (!service.isLoaded) service.initialize()
 
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
         val systemPrompt = Prompts.SYSTEM_PROMPT
         val userPrompt = Prompts.buildUserPrompt(rawText, today)
         val maxTokens = maxTokensForInput(rawText)
-        val modelName = llmService!!.currentModel ?: "unknown"
+        val modelName = service.currentModel ?: "unknown"
 
         val (response, duration) = measureTimedValue {
-            llmService!!.generateCompletion(
+            service.generateCompletion(
                 systemPrompt = systemPrompt,
                 userPrompt = userPrompt,
                 maxTokens = maxTokens,
             )
         }
 
-        val capture = try {
+        val capture = runCatching {
             JsonParser.parse(response, rawText)
-        } catch (e: Exception) {
-            throw LLMParseException(
-                model = modelName,
-                systemPrompt = systemPrompt,
-                userPrompt = userPrompt,
-                rawResponse = response,
-                durationMs = duration.inWholeMilliseconds,
-                parseError = e,
-            )
+        }.getOrElse { firstParseError ->
+            if (!shouldRetry(response)) {
+                throw LLMParseException(
+                    model = modelName,
+                    systemPrompt = systemPrompt,
+                    userPrompt = userPrompt,
+                    rawResponse = response,
+                    durationMs = duration.inWholeMilliseconds,
+                    parseError = firstParseError,
+                )
+            }
+
+            val retryPrompt = Prompts.buildRetryUserPrompt(rawText, today)
+            val (retryResponse, retryDuration) = measureTimedValue {
+                service.generateCompletion(
+                    systemPrompt = systemPrompt,
+                    userPrompt = retryPrompt,
+                    maxTokens = AIConfig.MAX_TOKENS_LONG_INPUT
+                )
+            }
+
+            return try {
+                val retryCapture = JsonParser.parse(retryResponse, rawText)
+                val retryLog = InferenceLog(
+                    model = modelName,
+                    systemPrompt = systemPrompt,
+                    userPrompt = retryPrompt,
+                    rawResponse = retryResponse,
+                    durationMs = duration.inWholeMilliseconds + retryDuration.inWholeMilliseconds,
+                    method = "llm",
+                )
+                ParseOutput(retryCapture, retryLog)
+            } catch (retryParseError: Exception) {
+                val combinedResponse = buildString {
+                    append(response)
+                    append("\n--- retry ---\n")
+                    append(retryResponse)
+                }
+                val combinedDuration = duration.inWholeMilliseconds + retryDuration.inWholeMilliseconds
+                throw LLMParseException(
+                    model = modelName,
+                    systemPrompt = systemPrompt,
+                    userPrompt = retryPrompt,
+                    rawResponse = combinedResponse,
+                    durationMs = combinedDuration,
+                    parseError = retryParseError,
+                )
+            }
         }
         val log = InferenceLog(
             model = modelName,
@@ -59,6 +99,14 @@ open class TaskParser(
             method = "llm",
         )
         return ParseOutput(capture, log)
+    }
+
+    private fun shouldRetry(response: String): Boolean {
+        val trimmed = response.trim()
+        if (trimmed.isBlank()) return true
+        if (trimmed.equals("<end_of_turn>", ignoreCase = true)) return true
+        if (trimmed.contains("<end_of_turn>", ignoreCase = true) && trimmed.count { it == '{' } == 0) return true
+        return trimmed.indexOf('{') == -1
     }
 
     private fun maxTokensForInput(rawText: String): Int {
