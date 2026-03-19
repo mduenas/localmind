@@ -7,13 +7,25 @@
 | **Product ID** | `premium_lifetime` | `premium_monthly` |
 | **Type** | Non-consumable (Play) / Non-Consumable (App Store) | Subscription (Play) / Auto-Renewable Subscription (App Store) |
 | **Reference Name** | LocalMind Premium Lifetime | LocalMind Premium Monthly |
-| **Price** | $29.99 (suggested: $29–$49) | $4.99/month |
+| **Price (current)** | $24.99 | $3.99/month |
 | **Grace Period** | N/A | 16 days (Play) / auto (App Store) |
 
 ### Feature Entitlements (both products unlock the same set)
 - On-device LLM task parsing
 - JSON task export
 - Priority support & future premium features
+
+---
+
+## Pricing Schedule (Implemented)
+
+| Phase | Dates | Lifetime | Monthly |
+|-------|-------|----------|---------|
+| **Launch Intro** | 2026-03-15 to 2026-05-31 | $24.99 | $3.99 |
+| **Standard** | 2026-06-01 to 2026-09-30 | $29.99 | $4.99 |
+| **Mature** | 2026-10-01 onward | $34.99 | $5.99 |
+
+Use local midnight in each store region when scheduling automatic price changes.
 
 ---
 
@@ -26,7 +38,7 @@
    - **Product ID**: `premium_lifetime`
    - **Name**: LocalMind Premium (Lifetime)
    - **Description**: Unlock on-device AI parsing, JSON export, and all future premium features with a one-time purchase.
-   - **Default price**: $29.99
+   - **Default price**: $24.99
 4. Set status to **Active**
 
 ### 2. Create Subscription (Monthly)
@@ -39,10 +51,17 @@
    - **Base plan ID**: `monthly`
    - **Renewal type**: Auto-renewing
    - **Billing period**: 1 month
-   - **Price**: $4.99
+   - **Price**: $3.99
    - **Grace period**: 16 days
    - **Account hold**: 30 days
 5. Set status to **Active**
+
+### 2b. Schedule Play Price Changes
+1. In each product/base plan, open **Price > Schedule new price**
+2. Add:
+   - 2026-06-01: lifetime $29.99, monthly $4.99
+   - 2026-10-01: lifetime $34.99, monthly $5.99
+3. Enable rollout to all regions (or custom regional overrides)
 
 ### 3. Licensing Testing
 1. Go to **Settings > License testing**
@@ -63,7 +82,7 @@
 3. Fill in:
    - **Reference Name**: LocalMind Premium Lifetime
    - **Product ID**: `premium_lifetime`
-   - **Price**: Tier 30 ($29.99) — adjust per pricing strategy
+   - **Price**: Tier 25 ($24.99)
 4. Add localization:
    - **Display Name**: LocalMind Premium (Lifetime)
    - **Description**: Unlock on-device AI parsing, JSON export, and all future premium features with a one-time purchase.
@@ -77,12 +96,18 @@
    - **Reference Name**: LocalMind Premium Monthly
    - **Product ID**: `premium_monthly`
    - **Subscription Duration**: 1 Month
-   - **Price**: Tier 5 ($4.99)
+   - **Price**: Tier 4 ($3.99)
 4. Add localization:
    - **Display Name**: LocalMind Premium
    - **Description**: On-device AI parsing, JSON export, and all premium features. Cancel anytime.
 5. Add a screenshot of the paywall (required for review)
 6. Set status to **Ready to Submit**
+
+### 2b. Schedule App Store Price Changes
+1. Open each IAP/subscription and add scheduled price changes:
+   - 2026-06-01: Tier 30 ($29.99) and Tier 5 ($4.99)
+   - 2026-10-01: Tier 35 ($34.99) and Tier 6 ($5.99)
+2. Confirm preserving price for existing subscribers is **off** for monthly plan.
 
 ### 3. Sandbox Testing
 1. Go to **Users and Access > Sandbox > Testers**
@@ -92,7 +117,7 @@
 
 ### 4. App Store Review Notes
 Include in the review notes field:
-> In-app purchases: The app offers a one-time "Premium Lifetime" purchase ($29.99) and a "Premium Monthly" subscription ($4.99/mo). Both unlock the same features: on-device LLM parsing and JSON export. The app works fully offline with no network calls — StoreKit is the only external API used. Test account credentials: [provide sandbox account].
+> In-app purchases: The app offers a one-time "Premium Lifetime" purchase and a "Premium Monthly" subscription. Both unlock the same features: on-device LLM parsing and JSON export. Current launch prices are $24.99 lifetime and $3.99/month, with scheduled increases already configured in App Store Connect. The app works fully offline with no network calls — StoreKit is the only external API used. Test account credentials: [provide sandbox account].
 
 ---
 
@@ -100,7 +125,7 @@ Include in the review notes field:
 
 Product IDs are defined in:
 ```
-composeApp/src/commonMain/kotlin/com/markduenas/localmind/billing/ProductIds.kt
+composeApp/src/commonMain/kotlin/com/markduenas/localmind/billing/BillingProduct.kt
 ```
 
 ```kotlin
@@ -116,8 +141,7 @@ These IDs **must match exactly** between the code and both store consoles.
 
 ## Pricing Strategy Notes
 
-Per the spec, pricing ranges are:
-- **Lifetime**: $29–$49 one-time (start at $29.99, can increase later)
-- **Monthly**: ~$5/month (start at $4.99)
-
-Consider launching at the lower end and raising prices after establishing reviews and download velocity. Both stores allow price changes without app updates.
+Schedule rationale:
+- Lower launch prices reduce purchase friction while early reviews accumulate.
+- First lift at 2026-06-01 aligns with post-launch validation window.
+- Second lift at 2026-10-01 aligns with mature feature set and higher perceived value.

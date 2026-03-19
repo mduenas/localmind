@@ -10,8 +10,11 @@ class StubTaskParser(
     private val result: ParsedTask? = null,
     private val shouldThrow: Boolean = false,
 ) : TaskParser(null) {
+    var parseCallCount: Int = 0
+        private set
 
     override suspend fun parse(rawText: String): ParseOutput {
+        parseCallCount++
         if (shouldThrow) throw RuntimeException("LLM failed")
         val task = result ?: throw RuntimeException("No result configured")
         val log = InferenceLog(

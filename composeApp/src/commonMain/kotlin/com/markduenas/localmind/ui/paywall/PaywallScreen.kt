@@ -24,8 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.markduenas.localmind.billing.BillingProduct
+import com.markduenas.localmind.billing.PricingSchedule
 import com.markduenas.localmind.billing.ProductIds
-import com.markduenas.localmind.billing.ProductType
 
 @Composable
 fun PaywallContent(
@@ -131,6 +131,9 @@ fun PaywallContent(
 
         // Fallback if no products loaded yet
         if (lifetime == null && monthly == null) {
+            val fallbackLifetime = PricingSchedule.fallbackPrice(ProductIds.PREMIUM_LIFETIME)
+            val fallbackMonthly = PricingSchedule.fallbackPrice(ProductIds.PREMIUM_MONTHLY)
+
             Button(
                 onClick = { onPurchase(ProductIds.PREMIUM_LIFETIME) },
                 enabled = !purchaseInProgress && !restoreInProgress,
@@ -142,9 +145,25 @@ fun PaywallContent(
                         strokeWidth = 2.dp,
                     )
                 } else {
-                    Text("Purchase Premium")
+                    Text("Lifetime — $fallbackLifetime")
                 }
             }
+
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { onPurchase(ProductIds.PREMIUM_MONTHLY) },
+                enabled = !purchaseInProgress && !restoreInProgress,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Monthly — $fallbackMonthly/mo")
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = PricingSchedule.phaseNotice(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Spacer(Modifier.height(16.dp))

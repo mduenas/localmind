@@ -3,8 +3,13 @@ package com.markduenas.localmind.ai
 import com.markduenas.localmind.domain.model.ParsedCapture
 import com.markduenas.localmind.domain.model.ParsedTask
 import com.markduenas.localmind.domain.model.Priority
+import kotlin.time.Clock
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
+import kotlinx.datetime.todayIn
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -65,6 +70,36 @@ class JsonParserTest {
 
         assertNull(result.dueDate)
         assertNull(result.dueTime)
+    }
+
+    @Test
+    fun parses12HourDueTimeFromJson() {
+        val json = """{"title":"Call mom","due_date":"2026-03-20","due_time":"6pm","priority":"medium","tags":[],"confidence":0.9}"""
+        val result = parseAsTask(json, "call mom tomorrow")
+
+        assertEquals(LocalTime(18, 0), result.dueTime)
+    }
+
+    @Test
+    fun fallsBackToOriginalTextTimeWhenJsonTimeMissing() {
+        val json = """{"title":"Call mom","due_date":"2026-03-20","due_time":null,"priority":"medium","tags":[],"confidence":0.9}"""
+        val result = parseAsTask(json, "call mom at 6:30pm")
+
+        assertEquals(LocalTime(18, 30), result.dueTime)
+    }
+
+    @Test
+    fun fallsBackToOriginalTextDateAndTimeWhenJsonIsNull() {
+        val json = """
+            ```json
+            {"type":"task","title":"","body":null,"due_date":null,"due_time":null,"priority":"medium","tags":[],"confidence":0.0}
+            ```<end_of_turn>
+        """.trimIndent()
+        val result = parseAsTask(json, "Pick up rocks tomorrow at the nursery at 9.30 in the morning")
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+
+        assertEquals(today.plus(1, DateTimeUnit.DAY), result.dueDate)
+        assertEquals(LocalTime(9, 30), result.dueTime)
     }
 
     @Test
@@ -151,9 +186,10 @@ class JsonParserTest {
         """.trimIndent()
 
         val result = parseAsTask(json, "buy chicken feed today")
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
         assertEquals("buy chicken feed today", result.title)
-        assertNull(result.dueDate)
+        assertEquals(today, result.dueDate)
         assertNull(result.dueTime)
         assertEquals(Priority.MEDIUM, result.priority)
     }

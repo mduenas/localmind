@@ -82,6 +82,11 @@ object JsonParser {
      */
     private fun sanitizeMalformedJson(raw: String): String {
         return raw
+            .replace('“', '"')
+            .replace('”', '"')
+            .replace('’', '\'')
+            .replace('‘', '\'')
+            .replace(Regex("(?m)//.*$"), "")
             .replace(
                 Regex("\"note\"\\s*:\\s*\"title\"\\s*:\\s*\"", RegexOption.IGNORE_CASE),
                 "\"type\":\"note\",\"title\":\""
@@ -242,6 +247,8 @@ object JsonParser {
 
     private fun stripKnownArtifacts(raw: String): String {
         return raw
+            .replace(Regex("<think>.*?</think>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)), "")
+            .replace(Regex("</?think>", RegexOption.IGNORE_CASE), "")
             .replace(Regex("```json\\s*", RegexOption.IGNORE_CASE), "")
             .replace(Regex("```\\s*"), "")
             .replace(Regex("<\\s*end_of_turn\\s*>", RegexOption.IGNORE_CASE), "")
@@ -315,8 +322,8 @@ private fun CaptureJson.toDomain(originalText: String): ParsedCapture {
         ParsedCapture.TaskCapture(
             ParsedTask(
                 title = safeTitle,
-                dueDate = dueDate?.let { parseDateSafe(it) },
-                dueTime = dueTime?.let { parseTimeSafe(it) },
+                dueDate = dueDate?.let { parseDateSafe(it) } ?: extractDateFromText(originalText),
+                dueTime = dueTime?.let { parseTimeSafe(it) } ?: TimePatterns.extract(originalText),
                 priority = parsePriority(priority),
                 tags = tags,
                 originalText = originalText,
@@ -335,12 +342,21 @@ private fun parseDateSafe(value: String): LocalDate? {
     }
 }
 
-private fun parseTimeSafe(value: String): LocalTime? {
-    return try {
-        LocalTime.parse(value)
-    } catch (_: Exception) {
-        null
+private fun extractDateFromText(text: String): LocalDate? {
+    for ((pattern, resolver) in DatePatterns.patterns) {
+        val match = pattern.find(text) ?: continue
+        val date = resolver(match)
+        if (date != null) return date
     }
+    return null
+}
+
+private fun parseTimeSafe(value: String): LocalTime? {
+    val cleaned = value.trim().trim('"')
+    if (cleaned.isBlank()) return null
+
+    return runCatching { LocalTime.parse(cleaned) }.getOrNull()
+        ?: TimePatterns.extract(cleaned)
 }
 
 private fun parsePriority(value: String): Priority {

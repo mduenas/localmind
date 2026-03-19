@@ -35,7 +35,9 @@ class LLMService(
             }
 
             val lm = CactusLM()
-            lm.downloadModel(selectedModel)
+            if (!modelManager.isModelDownloaded(selectedModel)) {
+                lm.downloadModel(selectedModel)
+            }
             lm.initializeModel(
                 CactusInitParams(
                     model = selectedModel,
@@ -59,7 +61,7 @@ class LLMService(
             ChatMessage(content = userPrompt, role = "user")
         )
 
-        val result = withTimeout(AIConfig.LLM_TIMEOUT_MS) {
+        val result = withTimeout(AIConfig.timeoutMsForModel(loadedModel)) {
             lm.generateCompletion(
                 messages = messages,
                 params = CactusCompletionParams(

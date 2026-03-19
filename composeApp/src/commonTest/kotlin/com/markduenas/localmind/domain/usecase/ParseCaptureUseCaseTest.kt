@@ -57,19 +57,21 @@ class ParseCaptureUseCaseTest {
             confidence = 0.95f,
             suggestedEdits = null,
         )
+        val taskParser = StubTaskParser(result = parsed)
         val useCase = ParseCaptureUseCase(
-            taskParser = StubTaskParser(result = parsed),
+            taskParser = taskParser,
             ruleBasedParser = ruleBasedParser,
             isLLMEnabled = { true },
             isPremium = { true },
         )
 
-        val result = useCase("buy groceries")
+        val result = useCase("buy groceries for family this weekend and schedule pickup with neighbor")
 
         assertIs<ParseResult.Success>(result)
         val capture = result.capture
         assertIs<ParsedCapture.TaskCapture>(capture)
         assertEquals(0.95f, capture.task.confidence)
+        assertEquals(1, taskParser.parseCallCount)
     }
 
     @Test
@@ -91,19 +93,40 @@ class ParseCaptureUseCaseTest {
 
     @Test
     fun llmEnabledAndPremiumButThrowsFallsBackToRuleBased() = runBlocking {
+        val taskParser = StubTaskParser(shouldThrow = true)
         val useCase = ParseCaptureUseCase(
-            taskParser = StubTaskParser(shouldThrow = true),
+            taskParser = taskParser,
             ruleBasedParser = ruleBasedParser,
             isLLMEnabled = { true },
             isPremium = { true },
         )
 
-        val result = useCase("buy groceries tomorrow")
+        val result = useCase("buy groceries tomorrow and call the contractor before lunch")
 
         assertIs<ParseResult.Fallback>(result)
         val capture = result.capture
         assertIs<ParsedCapture.TaskCapture>(capture)
-        assertEquals("Buy groceries", capture.task.title)
+        assertTrue(capture.task.title.contains("Buy groceries", ignoreCase = true))
         assertTrue(result.reason != null)
+        assertEquals(1, taskParser.parseCallCount)
+    }
+
+    @Test
+    fun llmEnabledAndPremiumSimplePromptUsesFastRulePath() = runBlocking {
+        val taskParser = StubTaskParser(shouldThrow = true)
+        val useCase = ParseCaptureUseCase(
+            taskParser = taskParser,
+            ruleBasedParser = ruleBasedParser,
+            isLLMEnabled = { true },
+            isPremium = { true },
+        )
+
+        val result = useCase("get milk tomorrow")
+
+        assertIs<ParseResult.Success>(result)
+        val capture = result.capture
+        assertIs<ParsedCapture.TaskCapture>(capture)
+        assertEquals("Get milk", capture.task.title)
+        assertEquals(0, taskParser.parseCallCount)
     }
 }

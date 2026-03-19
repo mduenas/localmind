@@ -16,7 +16,7 @@
 - **Core Promise**: Voice/text capture → on-device AI → structured local tasks. Zero data leaves device.
 - **Monetization**: Freemium
   - Free: Basic capture + rule-based parsing
-  - Premium ($29–$49 one-time or ~$5/mo): Full LLM, encryption, advanced exports
+  - Premium (phased: $24.99 launch, $29.99 standard, $34.99 mature; monthly $3.99 → $4.99 → $5.99): Full LLM, encryption, advanced exports
 
 ---
 

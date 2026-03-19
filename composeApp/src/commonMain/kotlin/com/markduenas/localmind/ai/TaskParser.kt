@@ -26,10 +26,10 @@ open class TaskParser(
         if (!service.isLoaded) service.initialize()
 
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
-        val systemPrompt = Prompts.SYSTEM_PROMPT
-        val userPrompt = Prompts.buildUserPrompt(rawText, today)
-        val maxTokens = maxTokensForInput(rawText)
         val modelName = service.currentModel ?: "unknown"
+        val systemPrompt = Prompts.systemPromptForModel(modelName)
+        val userPrompt = Prompts.buildUserPrompt(rawText, today, modelName)
+        val maxTokens = maxTokensForInput(rawText)
 
         val (response, duration) = measureTimedValue {
             service.generateCompletion(
@@ -41,24 +41,13 @@ open class TaskParser(
 
         val capture = runCatching {
             JsonParser.parse(response, rawText)
-        }.getOrElse { firstParseError ->
-            if (!shouldRetry(response)) {
-                throw LLMParseException(
-                    model = modelName,
-                    systemPrompt = systemPrompt,
-                    userPrompt = userPrompt,
-                    rawResponse = response,
-                    durationMs = duration.inWholeMilliseconds,
-                    parseError = firstParseError,
-                )
-            }
-
-            val retryPrompt = Prompts.buildRetryUserPrompt(rawText, today)
+        }.getOrElse {
+            val retryPrompt = Prompts.buildRetryUserPrompt(rawText = rawText, todayDate = today, modelSlug = modelName)
             val (retryResponse, retryDuration) = measureTimedValue {
                 service.generateCompletion(
                     systemPrompt = systemPrompt,
                     userPrompt = retryPrompt,
-                    maxTokens = AIConfig.MAX_TOKENS_LONG_INPUT
+                    maxTokens = AIConfig.MAX_TOKENS_RETRY
                 )
             }
 
@@ -99,14 +88,6 @@ open class TaskParser(
             method = "llm",
         )
         return ParseOutput(capture, log)
-    }
-
-    private fun shouldRetry(response: String): Boolean {
-        val trimmed = response.trim()
-        if (trimmed.isBlank()) return true
-        if (trimmed.equals("<end_of_turn>", ignoreCase = true)) return true
-        if (trimmed.contains("<end_of_turn>", ignoreCase = true) && trimmed.count { it == '{' } == 0) return true
-        return trimmed.indexOf('{') == -1
     }
 
     private fun maxTokensForInput(rawText: String): Int {

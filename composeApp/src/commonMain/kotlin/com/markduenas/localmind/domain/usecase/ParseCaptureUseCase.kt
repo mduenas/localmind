@@ -12,9 +12,38 @@ class ParseCaptureUseCase(
     private val isLLMEnabled: () -> Boolean = { false },
     private val isPremium: () -> Boolean = { false },
 ) {
+    companion object {
+        private const val FAST_PATH_MAX_WORDS = 10
+        private const val FAST_PATH_MAX_CHARS = 80
+        private val FAST_PATH_COMPLEXITY_MARKERS = listOf(
+            " if ",
+            " when ",
+            " because ",
+            " after ",
+            " before ",
+            " unless ",
+            " then ",
+            ";",
+            ":",
+        )
+    }
+
     suspend operator fun invoke(rawText: String): ParseResult {
         if (rawText.isBlank()) {
             return ParseResult.Error("Input text is empty")
+        }
+
+        if (isLLMEnabled() && isPremium() && shouldUseRuleFastPath(rawText)) {
+            val parsed = ruleBasedParser.parse(rawText)
+            val fastPathLog = InferenceLog(
+                model = "rule-based",
+                systemPrompt = "",
+                userPrompt = rawText,
+                rawResponse = null,
+                durationMs = 0,
+                method = "rule",
+            )
+            return ParseResult.Success(parsed, inferenceLog = fastPathLog)
         }
 
         return if (isLLMEnabled() && isPremium()) {
@@ -51,5 +80,17 @@ class ParseCaptureUseCase(
             val parsed = ruleBasedParser.parse(rawText)
             ParseResult.Success(parsed)
         }
+    }
+
+    private fun shouldUseRuleFastPath(rawText: String): Boolean {
+        val trimmed = rawText.trim()
+        if (trimmed.length > FAST_PATH_MAX_CHARS) return false
+        if (trimmed.contains('\n')) return false
+
+        val lower = " ${trimmed.lowercase()} "
+        if (FAST_PATH_COMPLEXITY_MARKERS.any { lower.contains(it) }) return false
+
+        val wordCount = trimmed.split(Regex("\\s+")).count { it.isNotBlank() }
+        return wordCount in 1..FAST_PATH_MAX_WORDS
     }
 }
