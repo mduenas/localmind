@@ -36,13 +36,15 @@ kotlin {
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
+        iosTarget.binaries.all {
             linkerOpts("-framework", "CoreML")
             linkerOpts("-framework", "Accelerate")
             linkerOpts("-framework", "AVFoundation")
             linkerOpts("-framework", "Speech")
+        }
+        iosTarget.binaries.framework {
+            baseName = "ComposeApp"
+            isStatic = true
         }
     }
 
@@ -107,8 +109,8 @@ android {
         applicationId = "com.markduenas.localmind"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 34
-        versionName = "1.0.32"
+        versionCode = 37
+        versionName = "1.0.34"
     }
 
     signingConfigs {
@@ -144,4 +146,26 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest>().configureEach {
+    val runBenchmark = project.findProperty("localmindRunLlmBenchmark")?.toString().orEmpty()
+    val periodic = project.findProperty("localmindBenchPeriodic")?.toString().orEmpty()
+    val thirdModel = project.findProperty("localmindBenchThirdModel")?.toString().orEmpty()
+
+    environment("LOCALMIND_RUN_LLM_BENCHMARK", runBenchmark)
+    environment("LOCALMIND_BENCH_PERIODIC", periodic)
+    if (thirdModel.isNotBlank()) {
+        environment("LOCALMIND_BENCH_THIRD_MODEL", thirdModel)
+    }
+
+    if (runBenchmark.isNotBlank()) {
+        args = args + "LOCALMIND_RUN_LLM_BENCHMARK=$runBenchmark"
+    }
+    if (periodic.isNotBlank()) {
+        args = args + "LOCALMIND_BENCH_PERIODIC=$periodic"
+    }
+    if (thirdModel.isNotBlank()) {
+        args = args + "LOCALMIND_BENCH_THIRD_MODEL=$thirdModel"
+    }
 }
