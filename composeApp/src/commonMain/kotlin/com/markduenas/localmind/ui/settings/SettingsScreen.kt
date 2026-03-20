@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.markduenas.localmind.platform.NotificationPermissionEffect
@@ -126,6 +127,16 @@ fun SettingsScreen(
             onExportTasks = viewModel::exportTasks,
             isPremium = state.isPremium,
             onUpgradeRequired = viewModel::showPaywall,
+        )
+
+        HorizontalDivider()
+
+        Text(
+            text = "Version ${state.appVersion}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

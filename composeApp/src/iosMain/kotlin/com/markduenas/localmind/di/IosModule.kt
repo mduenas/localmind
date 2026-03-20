@@ -4,6 +4,7 @@ import com.markduenas.localmind.ai.BackgroundTaskRunner
 import com.markduenas.localmind.data.local.DatabaseDriverFactory
 import com.markduenas.localmind.platform.AudioFileProvider
 import com.markduenas.localmind.platform.AudioRecorder
+import com.markduenas.localmind.platform.AppVersionProvider
 import com.markduenas.localmind.platform.BillingService
 import com.markduenas.localmind.platform.FileSharer
 import com.markduenas.localmind.platform.NotificationHelper
@@ -22,6 +23,7 @@ val iosModule = module {
     single { PlatformSettings() }
     single { AudioRecorder() }
     single { AudioFileProvider() }
+    single { AppVersionProvider() }
     single { SpeechRecognitionService() }
     single { BillingService() }
     single { BackgroundTaskRunner() }

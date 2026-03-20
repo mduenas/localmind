@@ -107,7 +107,7 @@ object JsonParser {
                 "\"type\":\"$1\""
             )
             // Remove trailing commas before closing braces.
-            .replace(Regex(",\\s*}"), "}")
+            .replace(Regex(",\\s*\\}"), "}")
     }
 
     private fun normalizeSchema(element: JsonElement): JsonObject {

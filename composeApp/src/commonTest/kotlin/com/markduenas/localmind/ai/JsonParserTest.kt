@@ -203,4 +203,30 @@ class JsonParserTest {
         assertEquals("Visit Boise in April", capture.note.body)
         assertEquals(listOf("travel"), capture.note.tags)
     }
+
+    @Test
+    fun handlesRetryResponseWithInvalidTemplateObjectOnIosRegexEngine() {
+        val json = """
+            ```json
+            {"type":"task","title":"","body":null,"due_date":null,"due_time":null,"priority":"medium","tags":[],"confidence":0.0}
+            ```
+            <end_of_turn>
+            --- retry ---
+            ```json
+            {
+              "type": "task" or "note" (default "task") {
+                "title", "day_date", null, ...less complete than the original but not specified yet in this response
+              }
+            }
+            ```
+            <end of turn>
+        """.trimIndent()
+
+        val result = parseAsTask(json, "Pick up some milk at Winco tomorrow at 9.30 in the morning.")
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+
+        assertEquals(today.plus(1, DateTimeUnit.DAY), result.dueDate)
+        assertEquals(LocalTime(9, 30), result.dueTime)
+        assertEquals(Priority.MEDIUM, result.priority)
+    }
 }

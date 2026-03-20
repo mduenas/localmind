@@ -109,8 +109,8 @@ android {
         applicationId = "com.markduenas.localmind"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 40
-        versionName = "1.0.37"
+        versionCode = 42
+        versionName = "1.0.39"
     }
 
     signingConfigs {

@@ -15,11 +15,17 @@ object AIConfig {
     const val CONTEXT_SIZE = 2048
 
     // Performance budgets
-    const val LLM_TIMEOUT_MS = 8_000L
+    const val LLM_TIMEOUT_MS = 20_000L
+    const val LARGE_MODEL_TIMEOUT_MS = 24_000L
 
     fun timeoutMsForModel(model: String?): Long {
         val slug = model?.lowercase().orEmpty()
-        return if (slug.startsWith("qwen3-")) 12_000L else LLM_TIMEOUT_MS
+        return when {
+            slug.startsWith("qwen3-") -> LARGE_MODEL_TIMEOUT_MS
+            slug.startsWith("qwen2.5-") -> LARGE_MODEL_TIMEOUT_MS
+            slug.startsWith("llama3.") -> LARGE_MODEL_TIMEOUT_MS
+            else -> LLM_TIMEOUT_MS
+        }
     }
 
     // Approximate download sizes for user-facing display

@@ -12,6 +12,7 @@ import com.markduenas.localmind.data.repository.TaskRepository
 import com.markduenas.localmind.platform.FileSharer
 import com.markduenas.localmind.platform.NotificationHelper
 import com.markduenas.localmind.platform.PermissionHelper
+import com.markduenas.localmind.platform.AppVersionProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +42,7 @@ data class SettingsUiState(
     val showPaywall: Boolean = false,
     val purchaseInProgress: Boolean = false,
     val restoreInProgress: Boolean = false,
+    val appVersion: String = "unknown",
 )
 
 @Serializable
@@ -69,6 +71,7 @@ class SettingsViewModel(
     private val permissionHelper: PermissionHelper,
     private val billingRepository: BillingRepository,
     private val modelDownloadService: ModelDownloadService,
+    private val appVersionProvider: AppVersionProvider,
 ) : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
@@ -76,6 +79,7 @@ class SettingsViewModel(
     private val _showPaywall = MutableStateFlow(false)
     private val _purchaseInProgress = MutableStateFlow(false)
     private val _restoreInProgress = MutableStateFlow(false)
+    private val appVersion = appVersionProvider.displayString()
 
     init {
         // Auto-enable LLM when download completes
@@ -137,6 +141,7 @@ class SettingsViewModel(
             showPaywall = showPaywall,
             purchaseInProgress = purchaseInProgress,
             restoreInProgress = restoreInProgress,
+            appVersion = appVersion,
         )
     }.stateIn(
         viewModelScope,
