@@ -3,29 +3,33 @@ package com.markduenas.localmind.ai
 object Prompts {
 
     private val BASE_SYSTEM_PROMPT = """
-        Return exactly one JSON object and nothing else.
-        Do not output <think> blocks, markdown, comments, code fences, or explanations.
+        You are a deterministic information extractor.
+        Return exactly one RFC8259-valid JSON object and nothing else.
+        No markdown, no code fences, no comments, no prose, no <think>.
+        Use double quotes for all keys and string values.
+        Use literal null for missing values (never None, never "").
 
-        Required keys (exactly these keys):
+        Output schema: {"type":"","title":"","body":null,"due_date":null,"due_time":null,"priority":"medium","tags":[],"confidence":0.0}
+        Required keys (exactly these 8 keys, in any order):
         type,title,body,due_date,due_time,priority,tags,confidence
 
-        Rules:
-        - type: "task" or "note" (default "task")
-        - title: string
-        - body: string or null
+        Semantic rules:
+        - type is "task" or "note"
+        - note: observations/ideas/quotes/takeaways/general statements without an action request
+        - task: requests to do/remind/schedule/pay/call/book/submit/check/follow up
+        - title: concise summary string
+        - body: string or null; for note, keep full input text in body
         - due_date: "YYYY-MM-DD" or null
-        - due_time: "HH:MM" or null
-        - priority: "low" | "medium" | "high" (default "medium")
-        - tags: array of strings without "#"
+        - due_time: "HH:MM" 24-hour or null
+        - priority: "low"|"medium"|"high" (default "medium")
+        - tags: array of lowercase strings without "#"
         - confidence: number from 0.0 to 1.0
-        - use type="note" for observations, ideas, quotes, takeaways, retro notes, and general statements without an action request
-        - use type="task" when the input asks to do/remind/schedule/pay/call/book/submit something
-        - if type is "note": keep full input text in body, due_date=null, due_time=null, priority="medium"
-        - if input has an explicit date phrase, due_date must not be null
-        - if input has an explicit time phrase, due_time must not be null
-        - only use null for due_date/due_time when that field is truly absent
-        - normalize due_time to 24-hour HH:MM (examples: "6pm"->"18:00", "9.30 in the morning"->"09:30")
-        - resolve relative dates using today_date (examples: "tomorrow", "day after tomorrow", "in 3 days")
+
+        Date/time rules:
+        - Resolve relative dates using today_date.
+        - Normalize time like "6pm"->"18:00", "9.30 in the morning"->"09:30".
+        - For note, set due_date=null and due_time=null.
+        - For task, set due_date/due_time when explicitly present; otherwise null.
     """.trimIndent()
 
     val SYSTEM_PROMPT: String = BASE_SYSTEM_PROMPT
@@ -40,38 +44,52 @@ object Prompts {
 
     fun buildUserPrompt(rawText: String, todayDate: String, modelSlug: String? = null): String {
         val thinkControl = if (isQwen3(modelSlug)) "/no_think" else ""
+        val typeHint = typeHintFor(rawText)
         return """
             today_date: $todayDate
-            input_text:
-            $rawText
-            
-            Extraction requirements:
-            - If the input includes a date phrase, set due_date (do not return null).
-            - If the input includes a time phrase, set due_time (do not return null).
-            - For notes, keep full input in body and keep due_date/due_time null.
-            
-            Return only the JSON object now.
-            $thinkControl
-        """.trimIndent()
-    }
-
-    fun buildRetryUserPrompt(rawText: String, todayDate: String, modelSlug: String? = null): String {
-        val thinkControl = if (isQwen3(modelSlug)) "/no_think" else ""
-        return """
-            today_date: $todayDate
+            type_hint: $typeHint
             input_text:
             $rawText
 
-            Previous output was invalid. Try again from scratch.
-            Return exactly one valid JSON object with required keys only.
-            If a date phrase is present, due_date must be populated.
-            If a time phrase is present, due_time must be populated.
-            Do not include markdown, comments, code, or explanations.
+            Build the final JSON in one pass.
+
+            Validation checklist before answering:
+            1) Exactly one JSON object.
+            2) Exactly these keys: type,title,body,due_date,due_time,priority,tags,confidence
+            3) Strict JSON formatting (double quotes, no trailing commas, no comments).
+            4) confidence is numeric, tags is array, due_date is YYYY-MM-DD or null, due_time is HH:MM or null.
+            5) Use type_hint unless the input clearly contradicts it.
+
+            Return only the JSON object.
             $thinkControl
         """.trimIndent()
     }
 
     private fun isQwen3(modelSlug: String?): Boolean {
         return modelSlug?.lowercase()?.startsWith("qwen3-") == true
+    }
+
+    private fun typeHintFor(rawText: String): String {
+        val lower = rawText.lowercase()
+
+        val taskPatterns = listOf(
+            Regex("\\b(remind|schedule|call|book|submit|pay|email|check|follow up|todo|to do|task)\\b"),
+            Regex("\\b(today|tomorrow|tonight|next week|in \\d+ (day|days|week|weeks))\\b"),
+            Regex("\\b\\d{1,2}[:.]\\d{2}\\b"),
+            Regex("\\b\\d{1,2}(am|pm)\\b"),
+        )
+        val notePatterns = listOf(
+            Regex("\\b(note|idea|thought|quote|takeaway|retro|journal|observation|insight)\\b"),
+            Regex("\\b(remember this|learned|i noticed|travel thought)\\b"),
+        )
+
+        val taskScore = taskPatterns.count { it.containsMatchIn(lower) }
+        val noteScore = notePatterns.count { it.containsMatchIn(lower) }
+
+        return when {
+            taskScore > noteScore -> "task"
+            noteScore > taskScore -> "note"
+            else -> "unknown"
+        }
     }
 }

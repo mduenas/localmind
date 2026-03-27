@@ -143,6 +143,14 @@ fun ParseReviewScreen(
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
+                    if (state.isEnhancing) {
+                        Text(
+                            text = "Refining with AI...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
 
                     Spacer(Modifier.height(8.dp))
 
@@ -163,6 +171,20 @@ fun ParseReviewScreen(
                     }
 
                     Spacer(Modifier.height(16.dp))
+
+                    val suggestedTitle = state.suggestedTitle
+                    if (!suggestedTitle.isNullOrBlank()) {
+                        Text(
+                            text = "AI suggestion: $suggestedTitle",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedButton(onClick = viewModel::applySuggestedTitle) {
+                            Text("Use Suggested Title")
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
 
                     // Editable fields — conditional on type
                     if (isNote) {

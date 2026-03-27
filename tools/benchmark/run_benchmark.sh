@@ -79,8 +79,9 @@ extract_block "JSON" > "$OUT_DIR/results.json"
 extract_block "SUMMARY_MD" > "$OUT_DIR/summary.md"
 extract_block "SUGGESTIONS_MD" > "$OUT_DIR/suggestions.md"
 extract_block "DETAILED_MD" > "$OUT_DIR/detailed.md"
+extract_block "ROUTING_MD" > "$OUT_DIR/routing.md"
 
-if [[ ! -s "$OUT_DIR/results.json" || ! -s "$OUT_DIR/summary.md" || ! -s "$OUT_DIR/suggestions.md" || ! -s "$OUT_DIR/detailed.md" ]]; then
+if [[ ! -s "$OUT_DIR/results.json" || ! -s "$OUT_DIR/summary.md" || ! -s "$OUT_DIR/suggestions.md" || ! -s "$OUT_DIR/detailed.md" || ! -s "$OUT_DIR/routing.md" ]]; then
   echo "Failed to extract benchmark report blocks from test output. Check $LOG_FILE" >&2
   exit 2
 fi
@@ -95,3 +96,4 @@ echo "- $OUT_DIR/results.json"
 echo "- $OUT_DIR/summary.md"
 echo "- $OUT_DIR/suggestions.md"
 echo "- $OUT_DIR/detailed.md"
+echo "- $OUT_DIR/routing.md"

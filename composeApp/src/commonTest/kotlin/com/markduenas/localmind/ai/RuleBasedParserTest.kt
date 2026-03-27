@@ -272,6 +272,12 @@ class RuleBasedParserTest {
     }
 
     @Test
+    fun classifiesGrabErrandAsTask() {
+        val capture = parser.parse("grab some milk at the store this afternoon")
+        assertIs<ParsedCapture.TaskCapture>(capture)
+    }
+
+    @Test
     fun classifiesInputWithDateAsTask() {
         val capture = parser.parse("something interesting tomorrow")
         assertIs<ParsedCapture.TaskCapture>(capture)

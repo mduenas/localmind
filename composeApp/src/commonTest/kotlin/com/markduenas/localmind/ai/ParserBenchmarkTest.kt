@@ -45,7 +45,7 @@ class ParserBenchmarkTest {
     @Test
     fun scheduleCallMomTomorrow() {
         val task = parseAsTask("remind me to call mom tomorrow at 6pm")
-        assertEquals("Remind me to call mom", task.title)
+        assertEquals("Call mom", task.title)
         assertEquals(today().plus(1, DateTimeUnit.DAY), task.dueDate)
         assertEquals(LocalTime(18, 0), task.dueTime)
         assertEquals(Priority.MEDIUM, task.priority)

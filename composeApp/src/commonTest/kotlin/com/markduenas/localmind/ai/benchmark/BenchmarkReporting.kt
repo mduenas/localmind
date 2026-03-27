@@ -30,6 +30,7 @@ data class BenchmarkSuiteReport(
     val baselineModel: String,
     val results: List<ModelBenchmarkResult>,
     val suggestions: List<ModelSuggestion>,
+    val routingRecommendations: List<RoutingRecommendation> = emptyList(),
 )
 
 object BenchmarkModelCatalog {
@@ -115,6 +116,20 @@ object BenchmarkReportRenderer {
             lines += "| ${index + 1} | ${result.model} | ${result.compositeScore} | ${result.classificationAccuracy} | ${result.taskFieldAccuracy} | ${result.noteFieldAccuracy} | ${result.fallbackRate} | ${result.latency.p50Ms} | ${result.cacheHit} |"
         }
 
+        lines += ""
+        lines += "## Routing Recommendations"
+        if (report.routingRecommendations.isEmpty()) {
+            lines += "No routing recommendations generated."
+        } else {
+            lines += "| Model | Strategy | LLM Coverage | Utility Delta vs Rule | Mean Latency Delta (ms) | Summary |"
+            lines += "|---|---|---:|---:|---:|---|"
+            report.routingRecommendations
+                .sortedBy { it.model }
+                .forEach { recommendation ->
+                    lines += "| ${recommendation.model} | ${recommendation.strategy} | ${recommendation.llmCoverageRate} | ${recommendation.utilityDeltaVsRule} | ${recommendation.latencyDeltaVsRuleMs} | ${mdCell(recommendation.summary, maxLen = 120)} |"
+                }
+        }
+
         return lines.joinToString("\n")
     }
 
@@ -147,10 +162,10 @@ object BenchmarkReportRenderer {
         lines += "- Baseline: ${report.baselineModel}"
         lines += ""
         lines += "## Model Metrics"
-        lines += "| Model | Composite | Prompts | Classification | Task Fields | Note Fields | Valid JSON | Fallback | Mean (ms) | P50 (ms) | P95 (ms) | Cache Hit |"
-        lines += "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|"
+        lines += "| Model | Composite | Prompts | Classification | Task Fields | Note Fields | Valid JSON | Fallback | Timeout | Mean (ms) | P50 (ms) | P95 (ms) | Cache Hit |"
+        lines += "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|"
         ranked.forEach { result ->
-            lines += "| ${result.model} | ${result.compositeScore} | ${result.promptsEvaluated} | ${result.classificationAccuracy} | ${result.taskFieldAccuracy} | ${result.noteFieldAccuracy} | ${result.validJsonRate} | ${result.fallbackRate} | ${result.latency.meanMs} | ${result.latency.p50Ms} | ${result.latency.p95Ms} | ${result.cacheHit} |"
+            lines += "| ${result.model} | ${result.compositeScore} | ${result.promptsEvaluated} | ${result.classificationAccuracy} | ${result.taskFieldAccuracy} | ${result.noteFieldAccuracy} | ${result.validJsonRate} | ${result.fallbackRate} | ${result.timeoutRate} | ${result.latency.meanMs} | ${result.latency.p50Ms} | ${result.latency.p95Ms} | ${result.cacheHit} |"
         }
 
         ranked.forEach { result ->
@@ -201,7 +216,76 @@ object BenchmarkReportRenderer {
                     lines += "| ${mdCell(evaluation.id)} | ${mdCell(evaluation.firstError.orEmpty(), maxLen = 90)} | ${mdCell(evaluation.retryError.orEmpty(), maxLen = 90)} | ${mdCell(evaluation.firstResponse.orEmpty(), maxLen = 160)} | ${mdCell(evaluation.retryResponse.orEmpty(), maxLen = 160)} |"
                 }
             }
+
+            lines += ""
+            lines += "### Latency By Prompt Type"
+            lines += "| Type | Mean (ms) | P50 (ms) | P95 (ms) |"
+            lines += "|---|---:|---:|---:|"
+            lines += "| task | ${result.taskLatency.meanMs} | ${result.taskLatency.p50Ms} | ${result.taskLatency.p95Ms} |"
+            lines += "| note | ${result.noteLatency.meanMs} | ${result.noteLatency.p50Ms} | ${result.noteLatency.p95Ms} |"
+
+            lines += ""
+            lines += "### Latency By Prompt Length"
+            if (result.latencyByPromptLength.isEmpty()) {
+                lines += "No prompt-length metrics."
+            } else {
+                lines += "| Bucket | Prompts | Mean (ms) | P50 (ms) | P95 (ms) | Fallback | Timeout | Utility |"
+                lines += "|---|---:|---:|---:|---:|---:|---:|---:|"
+                result.latencyByPromptLength.forEach { bucket ->
+                    lines += "| ${bucket.bucket} | ${bucket.prompts} | ${bucket.meanMs} | ${bucket.p50Ms} | ${bucket.p95Ms} | ${bucket.fallbackRate} | ${bucket.timeoutRate} | ${bucket.utilityScore} |"
+                }
+            }
+
+            val routing = report.routingRecommendations.firstOrNull { it.model == result.model }
+            if (routing != null) {
+                lines += ""
+                lines += "### Routing Recommendation"
+                lines += routing.summary
+                lines += ""
+                lines += "| Segment | Route | Prompts | Utility Delta | LLM P50 (ms) | Rule P50 (ms) | LLM Fallback | LLM Timeout | Reason |"
+                lines += "|---|---|---:|---:|---:|---:|---:|---:|---|"
+                routing.segments.forEach { segment ->
+                    lines += "| ${segment.segment} | ${segment.routeTo} | ${segment.prompts} | ${segment.utilityDelta} | ${segment.llmP50LatencyMs} | ${segment.ruleP50LatencyMs} | ${segment.llmFallbackRate} | ${segment.llmTimeoutRate} | ${mdCell(segment.reason, maxLen = 120)} |"
+                }
+            }
         }
+
+        return lines.joinToString("\n")
+    }
+
+    fun toRoutingMarkdown(report: BenchmarkSuiteReport): String {
+        val lines = mutableListOf<String>()
+        lines += "# LocalMind Routing Recommendations"
+        lines += ""
+        lines += "- Generated: ${report.generatedAt}"
+        lines += "- Baseline: ${report.baselineModel}"
+        lines += ""
+
+        if (report.routingRecommendations.isEmpty()) {
+            lines += "No routing recommendations generated."
+            return lines.joinToString("\n")
+        }
+
+        report.routingRecommendations
+            .sortedBy { it.model }
+            .forEach { recommendation ->
+                lines += "## Model: ${recommendation.model}"
+                lines += ""
+                lines += "- Strategy: ${recommendation.strategy}"
+                lines += "- LLM coverage: ${recommendation.llmCoverageRate}"
+                lines += "- Utility delta vs rule: ${recommendation.utilityDeltaVsRule}"
+                lines += "- Mean latency delta vs rule (ms): ${recommendation.latencyDeltaVsRuleMs}"
+                lines += "- Thresholds: minUtilityGain=${recommendation.thresholds.minUtilityGain}, maxFallbackRate=${recommendation.thresholds.maxFallbackRate}, maxTimeoutRate=${recommendation.thresholds.maxTimeoutRate}, maxP50LatencyMs=${recommendation.thresholds.maxP50LatencyMs}"
+                lines += ""
+                lines += recommendation.summary
+                lines += ""
+                lines += "| Segment | Route | Prompts | LLM Utility | Rule Utility | Delta | LLM Mean (ms) | Rule Mean (ms) | LLM Fallback | LLM Timeout | Reason |"
+                lines += "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|"
+                recommendation.segments.forEach { segment ->
+                    lines += "| ${segment.segment} | ${segment.routeTo} | ${segment.prompts} | ${segment.llmUtility} | ${segment.ruleUtility} | ${segment.utilityDelta} | ${segment.llmMeanLatencyMs} | ${segment.ruleMeanLatencyMs} | ${segment.llmFallbackRate} | ${segment.llmTimeoutRate} | ${mdCell(segment.reason, maxLen = 120)} |"
+                }
+                lines += ""
+            }
 
         return lines.joinToString("\n")
     }

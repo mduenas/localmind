@@ -41,43 +41,15 @@ open class TaskParser(
 
         val capture = runCatching {
             JsonParser.parse(response, rawText)
-        }.getOrElse {
-            val retryPrompt = Prompts.buildRetryUserPrompt(rawText = rawText, todayDate = today, modelSlug = modelName)
-            val (retryResponse, retryDuration) = measureTimedValue {
-                service.generateCompletion(
-                    systemPrompt = systemPrompt,
-                    userPrompt = retryPrompt,
-                    maxTokens = AIConfig.MAX_TOKENS_RETRY
-                )
-            }
-
-            return try {
-                val retryCapture = JsonParser.parse(retryResponse, rawText)
-                val retryLog = InferenceLog(
-                    model = modelName,
-                    systemPrompt = systemPrompt,
-                    userPrompt = retryPrompt,
-                    rawResponse = retryResponse,
-                    durationMs = duration.inWholeMilliseconds + retryDuration.inWholeMilliseconds,
-                    method = "llm",
-                )
-                ParseOutput(retryCapture, retryLog)
-            } catch (retryParseError: Exception) {
-                val combinedResponse = buildString {
-                    append(response)
-                    append("\n--- retry ---\n")
-                    append(retryResponse)
-                }
-                val combinedDuration = duration.inWholeMilliseconds + retryDuration.inWholeMilliseconds
-                throw LLMParseException(
-                    model = modelName,
-                    systemPrompt = systemPrompt,
-                    userPrompt = retryPrompt,
-                    rawResponse = combinedResponse,
-                    durationMs = combinedDuration,
-                    parseError = retryParseError,
-                )
-            }
+        }.getOrElse { parseError ->
+            throw LLMParseException(
+                model = modelName,
+                systemPrompt = systemPrompt,
+                userPrompt = userPrompt,
+                rawResponse = response,
+                durationMs = duration.inWholeMilliseconds,
+                parseError = parseError,
+            )
         }
         val log = InferenceLog(
             model = modelName,

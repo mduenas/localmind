@@ -56,6 +56,12 @@ class IosLlmBenchmarkTest {
             installedModels = installed,
             benchmarkedModels = benchmarkedSet,
         )
+        val routingRecommendations = llmResults.map { llmResult ->
+            BenchmarkRoutingAdvisor.recommend(
+                baseline = baseline,
+                llmResult = llmResult,
+            )
+        }
 
         val report = BenchmarkSuiteReport(
             generatedAt = BenchmarkReportRenderer.nowIsoString(),
@@ -64,12 +70,14 @@ class IosLlmBenchmarkTest {
             baselineModel = baseline.model,
             results = listOf(baseline) + llmResults,
             suggestions = suggestions,
+            routingRecommendations = routingRecommendations,
         )
 
         emitBlock("JSON", BenchmarkReportRenderer.toJson(report))
         emitBlock("SUMMARY_MD", BenchmarkReportRenderer.toSummaryMarkdown(report))
         emitBlock("SUGGESTIONS_MD", BenchmarkReportRenderer.toSuggestionsMarkdown(report))
         emitBlock("DETAILED_MD", BenchmarkReportRenderer.toDetailedMarkdown(report))
+        emitBlock("ROUTING_MD", BenchmarkReportRenderer.toRoutingMarkdown(report))
     }
 
     private fun shouldRunBenchmark(): Boolean {
@@ -183,11 +191,10 @@ class IosLlmBenchmarkTest {
                 val systemPrompt = Prompts.systemPromptForModel(modelSlug)
                 val userPrompt = Prompts.buildUserPrompt(fixture.prompt, today, modelSlug)
                 val started = Clock.System.now()
+                val maxTokens = maxTokensForInput(fixture.prompt)
 
                 var firstError: String? = null
-                var retryError: String? = null
                 var firstResponse: String? = null
-                var retryResponse: String? = null
 
                 val firstResponseAttempt = runCatching {
                     withTimeout(AIConfig.timeoutMsForModel(modelSlug)) {
@@ -197,7 +204,7 @@ class IosLlmBenchmarkTest {
                                 ChatMessage(content = userPrompt, role = "user"),
                             ),
                             params = CactusCompletionParams(
-                                maxTokens = AIConfig.MAX_TOKENS_MEDIUM_INPUT,
+                                maxTokens = maxTokens,
                                 temperature = AIConfig.TEMPERATURE,
                             ),
                         )
@@ -222,44 +229,7 @@ class IosLlmBenchmarkTest {
                     firstError = firstCaptureAttempt.exceptionOrNull()?.message
                 }
 
-                val captureAttempt = if (firstCaptureAttempt.isSuccess) {
-                    firstCaptureAttempt
-                } else {
-                    val retryPrompt = Prompts.buildRetryUserPrompt(rawText = fixture.prompt, todayDate = today, modelSlug = modelSlug)
-                    val retryResponseAttempt = runCatching {
-                        withTimeout(AIConfig.timeoutMsForModel(modelSlug)) {
-                            lm.generateCompletion(
-                                messages = listOf(
-                                    ChatMessage(content = systemPrompt, role = "system"),
-                                    ChatMessage(content = retryPrompt, role = "user"),
-                                ),
-                                params = CactusCompletionParams(
-                                    maxTokens = AIConfig.MAX_TOKENS_RETRY,
-                                    temperature = AIConfig.TEMPERATURE,
-                                ),
-                            )
-                        }
-                    }.mapCatching { retryResult ->
-                        if (retryResult == null || !retryResult.success) {
-                            error("Retry generation failed")
-                        }
-                        retryResult.response ?: error("Retry response was empty")
-                    }.onSuccess {
-                        retryResponse = it
-                    }.onFailure {
-                        retryError = it.message
-                    }
-
-                    val retryCaptureAttempt = retryResponseAttempt.mapCatching { retryRawResponse ->
-                        JsonParser.parse(retryRawResponse, fixture.prompt)
-                    }
-
-                    if (retryCaptureAttempt.isFailure && retryError == null) {
-                        retryError = retryCaptureAttempt.exceptionOrNull()?.message
-                    }
-
-                    retryCaptureAttempt
-                }
+                val captureAttempt = firstCaptureAttempt
 
                 val latencyMs = (Clock.System.now() - started).inWholeMilliseconds
 
@@ -288,9 +258,7 @@ class IosLlmBenchmarkTest {
                     fallbackUsed = fallbackUsed,
                     error = error,
                     firstError = firstError,
-                    retryError = retryError,
                     firstResponse = firstResponse,
-                    retryResponse = retryResponse,
                 )
             }
 
@@ -328,6 +296,15 @@ class IosLlmBenchmarkTest {
         }
         if (result == null || !result.success) {
             error("Warmup failed")
+        }
+    }
+
+    private fun maxTokensForInput(rawText: String): Int {
+        val len = rawText.trim().length
+        return when {
+            len <= 80 -> AIConfig.MAX_TOKENS_SHORT_INPUT
+            len <= 200 -> AIConfig.MAX_TOKENS_MEDIUM_INPUT
+            else -> AIConfig.MAX_TOKENS_LONG_INPUT
         }
     }
 

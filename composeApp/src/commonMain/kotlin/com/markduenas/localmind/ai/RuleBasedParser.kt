@@ -14,10 +14,15 @@ class RuleBasedParser {
 
         private val ACTION_VERBS = setOf(
             "buy", "call", "fix", "send", "schedule", "meet", "finish", "submit",
-            "clean", "pick", "drop", "make", "write", "email", "text", "pay",
+            "clean", "pick", "drop", "make", "write", "email", "text", "pay", "grab",
             "book", "cancel", "return", "order", "check", "review", "update",
             "complete", "prepare", "remind", "setup", "set up", "install",
             "create", "build", "organize", "attend", "visit", "deliver"
+        )
+
+        private val LEADING_COMMAND_PATTERN = Regex(
+            "^(remind me to|remind me|remember to|please|i need to|need to|todo:?|to do:?|can you)\\s+",
+            setOf(RegexOption.IGNORE_CASE)
         )
     }
 
@@ -26,7 +31,7 @@ class RuleBasedParser {
         val dueTime = TimePatterns.extract(rawText)
         val priority = extractPriority(rawText)
         val tags = extractTags(rawText)
-        val title = buildTitle(rawText, dueDate, tags)
+        val title = buildTitle(rawText, tags)
 
         return if (isLikelyNote(rawText, dueDate, dueTime != null, priority)) {
             ParsedCapture.NoteCapture(
@@ -90,17 +95,15 @@ class RuleBasedParser {
      * Builds a clean title by stripping date phrases, hashtags, and priority keywords,
      * then trimming leftover whitespace/punctuation.
      */
-    private fun buildTitle(rawText: String, dueDate: LocalDate?, tags: List<String>): String {
+    private fun buildTitle(rawText: String, tags: List<String>): String {
         var title = rawText
 
         // Remove hashtags
         title = HASHTAG_PATTERN.replace(title, "")
 
-        // Remove matched date phrase if a date was found
-        if (dueDate != null) {
-            for ((pattern, _) in DatePatterns.patterns) {
-                title = pattern.replace(title, "")
-            }
+        // Always remove date-related phrases to keep titles focused on action/content.
+        for ((pattern, _) in DatePatterns.patterns) {
+            title = pattern.replace(title, "")
         }
 
         // Remove time phrases
@@ -109,12 +112,22 @@ class RuleBasedParser {
         // Remove priority keywords
         title = PriorityPatterns.removePatterns(title)
 
+        // Remove leading command words so title reads naturally.
+        title = LEADING_COMMAND_PATTERN.replace(title, "")
+
         // Clean up whitespace and trailing punctuation
         title = title
             .replace(Regex("\\s{2,}"), " ")
             .trim()
             .trimEnd(',', '.', '-', '–', '—')
             .trim()
+
+        if (title.isBlank()) {
+            title = rawText
+                .replace(HASHTAG_PATTERN, "")
+                .replace(Regex("\\s{2,}"), " ")
+                .trim()
+        }
 
         return title.replaceFirstChar { it.uppercaseChar() }
     }

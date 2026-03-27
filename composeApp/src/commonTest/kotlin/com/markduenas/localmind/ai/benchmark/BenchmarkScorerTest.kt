@@ -5,6 +5,7 @@ import com.markduenas.localmind.domain.model.ParsedNote
 import com.markduenas.localmind.domain.model.ParsedTask
 import com.markduenas.localmind.domain.model.Priority
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
@@ -66,5 +67,61 @@ class BenchmarkScorerTest {
 
         assertTrue(evaluation.classificationCorrect)
         assertTrue(evaluation.fieldScore >= 0.99)
+    }
+
+    @Test
+    fun aggregateIncludesTimeoutAndPromptLengthMetrics() {
+        val shortTaskFixture = BenchmarkFixtures.suite.prompts.first { it.id == "task_03" }
+        val longNoteFixture = BenchmarkFixtures.suite.prompts.first { it.id == "note_03" }
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+
+        val taskEvaluation = BenchmarkScorer.scorePrompt(
+            fixture = shortTaskFixture,
+            capture = ParsedCapture.TaskCapture(
+                task = ParsedTask(
+                    title = "Pick up groceries",
+                    dueDate = today.plus(1, DateTimeUnit.DAY),
+                    dueTime = null,
+                    priority = Priority.MEDIUM,
+                    tags = emptyList(),
+                    originalText = shortTaskFixture.prompt,
+                    confidence = 0.9f,
+                    suggestedEdits = null,
+                )
+            ),
+            latencyMs = 1200,
+            validJson = false,
+            fallbackUsed = true,
+            error = "Timed out waiting for 8000 ms",
+        )
+
+        val noteEvaluation = BenchmarkScorer.scorePrompt(
+            fixture = longNoteFixture,
+            capture = ParsedCapture.NoteCapture(
+                note = ParsedNote(
+                    title = "Plant watering project",
+                    body = longNoteFixture.prompt,
+                    tags = emptyList(),
+                    originalText = longNoteFixture.prompt,
+                    confidence = 0.9f,
+                )
+            ),
+            latencyMs = 200,
+            validJson = true,
+            fallbackUsed = false,
+        )
+
+        val aggregate = BenchmarkScorer.aggregate(
+            model = "test-model",
+            cacheHit = true,
+            evaluations = listOf(taskEvaluation, noteEvaluation),
+        )
+
+        assertEquals(0.5, aggregate.timeoutRate)
+        assertEquals(0.5, aggregate.fallbackRate)
+        assertEquals(1200.0, aggregate.taskLatency.meanMs)
+        assertEquals(200.0, aggregate.noteLatency.meanMs)
+        assertTrue(aggregate.latencyByPromptLength.any { it.bucket == "short" })
+        assertTrue(aggregate.latencyByPromptLength.any { it.bucket == "long" })
     }
 }

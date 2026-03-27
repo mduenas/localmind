@@ -20,6 +20,8 @@ data class PromptEvaluation(
     val classificationCorrect: Boolean,
     val fieldScore: Double,
     val latencyMs: Long,
+    val promptChars: Int = 0,
+    val promptWords: Int = 0,
     val validJson: Boolean,
     val fallbackUsed: Boolean,
     val error: String? = null,
@@ -37,6 +39,18 @@ data class LatencyStats(
 )
 
 @Serializable
+data class PromptLengthLatency(
+    val bucket: String,
+    val prompts: Int,
+    val meanMs: Double,
+    val p50Ms: Double,
+    val p95Ms: Double,
+    val fallbackRate: Double,
+    val timeoutRate: Double,
+    val utilityScore: Double,
+)
+
+@Serializable
 data class ModelBenchmarkResult(
     val model: String,
     val cacheHit: Boolean,
@@ -46,7 +60,11 @@ data class ModelBenchmarkResult(
     val noteFieldAccuracy: Double,
     val validJsonRate: Double,
     val fallbackRate: Double,
+    val timeoutRate: Double = 0.0,
     val latency: LatencyStats,
+    val taskLatency: LatencyStats = LatencyStats(0.0, 0.0, 0.0),
+    val noteLatency: LatencyStats = LatencyStats(0.0, 0.0, 0.0),
+    val latencyByPromptLength: List<PromptLengthLatency> = emptyList(),
     val compositeScore: Double,
     val evaluations: List<PromptEvaluation>,
 )
@@ -69,6 +87,8 @@ object BenchmarkScorer {
             is ParsedCapture.TaskCapture -> "task"
             is ParsedCapture.NoteCapture -> "note"
         }
+        val promptChars = fixture.prompt.trim().length
+        val promptWords = fixture.prompt.trim().split(Regex("\\s+")).count { it.isNotBlank() }
         val classificationCorrect = expectedType == actualType
         val fieldScore = when (capture) {
             is ParsedCapture.TaskCapture -> scoreTask(fixture.expected, capture)
@@ -82,6 +102,8 @@ object BenchmarkScorer {
             classificationCorrect = classificationCorrect,
             fieldScore = fieldScore,
             latencyMs = latencyMs,
+            promptChars = promptChars,
+            promptWords = promptWords,
             validJson = validJson,
             fallbackUsed = fallbackUsed,
             error = error,
@@ -102,7 +124,27 @@ object BenchmarkScorer {
         val noteFieldAccuracy = if (noteEvals.isEmpty()) 0.0 else noteEvals.map { it.fieldScore }.average()
         val validJsonRate = evaluations.count { it.validJson }.toDouble() / evaluations.size
         val fallbackRate = evaluations.count { it.fallbackUsed }.toDouble() / evaluations.size
+        val timeoutRate = evaluations.count { it.timedOut() }.toDouble() / evaluations.size
         val latency = latencyStats(evaluations.map { it.latencyMs })
+        val taskLatency = latencyStats(taskEvals.map { it.latencyMs })
+        val noteLatency = latencyStats(noteEvals.map { it.latencyMs })
+        val latencyByPromptLength = evaluations
+            .groupBy { promptLengthBucket(it.promptWords) }
+            .entries
+            .sortedWith(compareBy({ promptLengthRank(it.key) }, { it.key }))
+            .map { (bucket, bucketEvals) ->
+                val bucketLatency = latencyStats(bucketEvals.map { it.latencyMs })
+                PromptLengthLatency(
+                    bucket = bucket,
+                    prompts = bucketEvals.size,
+                    meanMs = bucketLatency.meanMs,
+                    p50Ms = bucketLatency.p50Ms,
+                    p95Ms = bucketLatency.p95Ms,
+                    fallbackRate = round4(bucketEvals.count { it.fallbackUsed }.toDouble() / bucketEvals.size),
+                    timeoutRate = round4(bucketEvals.count { it.timedOut() }.toDouble() / bucketEvals.size),
+                    utilityScore = round4(bucketEvals.map { it.utilityScore() }.average()),
+                )
+            }
 
         // Accuracy-first composite score.
         val accuracyCore = (classificationAccuracy * 0.7) + (((taskFieldAccuracy + noteFieldAccuracy) / 2.0) * 0.3)
@@ -119,7 +161,11 @@ object BenchmarkScorer {
             noteFieldAccuracy = round4(noteFieldAccuracy),
             validJsonRate = round4(validJsonRate),
             fallbackRate = round4(fallbackRate),
+            timeoutRate = round4(timeoutRate),
             latency = latency,
+            taskLatency = taskLatency,
+            noteLatency = noteLatency,
+            latencyByPromptLength = latencyByPromptLength,
             compositeScore = round4(composite),
             evaluations = evaluations,
         )
@@ -205,6 +251,9 @@ object BenchmarkScorer {
     }
 
     private fun latencyStats(values: List<Long>): LatencyStats {
+        if (values.isEmpty()) {
+            return LatencyStats(meanMs = 0.0, p50Ms = 0.0, p95Ms = 0.0)
+        }
         val sorted = values.sorted()
         val mean = sorted.average()
         val p50 = percentile(sorted, 0.50)
@@ -222,5 +271,32 @@ object BenchmarkScorer {
         return sorted[idx].toDouble()
     }
 
+    internal fun promptLengthBucket(words: Int): String {
+        return when {
+            words <= 6 -> "short"
+            words <= 12 -> "medium"
+            else -> "long"
+        }
+    }
+
+    private fun promptLengthRank(bucket: String): Int {
+        return when (bucket) {
+            "short" -> 0
+            "medium" -> 1
+            "long" -> 2
+            else -> Int.MAX_VALUE
+        }
+    }
+
     private fun round4(value: Double): Double = round(value * 10000.0) / 10000.0
+}
+
+internal fun PromptEvaluation.timedOut(): Boolean {
+    return listOfNotNull(error, firstError, retryError)
+        .any { it.contains("timed out", ignoreCase = true) }
+}
+
+internal fun PromptEvaluation.utilityScore(): Double {
+    val classification = if (classificationCorrect) 1.0 else 0.0
+    return (classification * 0.6) + (fieldScore * 0.4)
 }

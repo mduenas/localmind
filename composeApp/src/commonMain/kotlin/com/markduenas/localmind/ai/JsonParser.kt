@@ -6,6 +6,7 @@ import com.markduenas.localmind.domain.model.ParsedTask
 import com.markduenas.localmind.domain.model.Priority
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -22,10 +23,12 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlin.math.min
 
+@OptIn(ExperimentalSerializationApi::class)
 private val lenientJson = Json {
     ignoreUnknownKeys = true
     isLenient = true
     coerceInputValues = true
+    allowTrailingComma = true
 }
 
 @Serializable
@@ -54,18 +57,18 @@ object JsonParser {
     fun parse(jsonString: String, originalText: String): ParsedCapture {
         val candidates = extractJsonCandidates(jsonString)
         if (candidates.isEmpty()) throw LLMException("No JSON object found in LLM response")
-        val captureJson = decodeCaptureJson(candidates)
+        val captureJson = decodeCaptureJson(candidates, originalText)
         return captureJson.toDomain(originalText)
     }
 
-    private fun decodeCaptureJson(candidates: List<String>): CaptureJson {
+    private fun decodeCaptureJson(candidates: List<String>, originalText: String): CaptureJson {
         var lastError: Throwable? = null
         for (candidate in candidates) {
             val variants = listOf(candidate, sanitizeMalformedJson(candidate)).distinct()
             for (variant in variants) {
                 try {
                     val element = lenientJson.parseToJsonElement(variant)
-                    val normalized = normalizeSchema(element)
+                    val normalized = normalizeSchema(element, originalText)
                     return lenientJson.decodeFromJsonElement<CaptureJson>(normalized)
                 } catch (e: Throwable) {
                     lastError = e
@@ -86,7 +89,16 @@ object JsonParser {
             .replace('”', '"')
             .replace('’', '\'')
             .replace('‘', '\'')
+            .replace('：', ':')
+            .replace('，', ',')
             .replace(Regex("(?m)//.*$"), "")
+            .replace(Regex("\\bdue\\\\_date\\b"), "due_date")
+            .replace(Regex("\\bdue\\\\_time\\b"), "due_time")
+            .replace(Regex("([\\{,]\\s*)'([A-Za-z_][A-Za-z0-9_]*)'\\s*:"), "$1\"$2\":")
+            .replace(Regex(":\\s*'([^'\\\\]*(?:\\\\.[^'\\\\]*)*)'"), ":\"$1\"")
+            .replace(Regex("\\bNone\\b"), "null")
+            .replace(Regex("\\bTrue\\b"), "true")
+            .replace(Regex("\\bFalse\\b"), "false")
             .replace(
                 Regex("\"note\"\\s*:\\s*\"title\"\\s*:\\s*\"", RegexOption.IGNORE_CASE),
                 "\"type\":\"note\",\"title\":\""
@@ -108,27 +120,29 @@ object JsonParser {
             )
             // Remove trailing commas before closing braces.
             .replace(Regex(",\\s*\\}"), "}")
+            .replace(Regex(",\\s*]"), "]")
     }
 
-    private fun normalizeSchema(element: JsonElement): JsonObject {
+    private fun normalizeSchema(element: JsonElement, originalText: String): JsonObject {
         val root = element as? JsonObject ?: throw LLMException("Top-level JSON is not an object")
         val noteObj = root["note"] as? JsonObject
         val taskObj = root["task"] as? JsonObject
 
         val typeValue = normalizeType(
             type = root["type"],
+            originalText = originalText,
             hasNoteObject = noteObj != null,
             hasTaskObject = taskObj != null
         )
         val parsedType = primitiveText(typeValue)?.lowercase() ?: "task"
 
-        val dueDateValue = (
+        val rawDueDateValue = (
             root["due_date"] ?: if (parsedType == "task") taskObj?.get("due_date") else null
             )?.let(::normalizeDatePlaceholder) ?: JsonNull
-        val dueTimeValue = (
+        val rawDueTimeValue = (
             root["due_time"] ?: if (parsedType == "task") taskObj?.get("due_time") else null
             )?.let(::normalizeTimePlaceholder) ?: JsonNull
-        val priorityValue = (
+        val rawPriorityValue = (
             root["priority"] ?: if (parsedType == "task") taskObj?.get("priority") else null
             )?.let(::normalizePriority) ?: JsonPrimitive("medium")
         val tagsValue = (
@@ -138,16 +152,26 @@ object JsonParser {
         val confidenceValue = (
             root["confidence"]
                 ?: if (parsedType == "note") noteObj?.get("confidence") else taskObj?.get("confidence")
-            ) ?: JsonPrimitive(0.85f)
+            )?.let(::normalizeConfidence) ?: JsonPrimitive(0.85f)
+
+        val finalType = adjustTypeForInput(
+            requestedType = parsedType,
+            originalText = originalText,
+            dueDate = rawDueDateValue,
+            dueTime = rawDueTimeValue,
+        )
+        val dueDateValue = if (finalType == "note") JsonNull else rawDueDateValue
+        val dueTimeValue = if (finalType == "note") JsonNull else rawDueTimeValue
+        val priorityValue = if (finalType == "note") JsonPrimitive("medium") else rawPriorityValue
 
         val titleValue = when {
             root["title"] != null -> root["title"]!!
-            parsedType == "note" -> noteObj?.get("title") ?: JsonPrimitive("")
+            finalType == "note" -> noteObj?.get("title") ?: JsonPrimitive("")
             else -> taskObj?.get("title") ?: JsonPrimitive("")
         }
 
         val bodyValue = root["body"]
-            ?: if (parsedType == "note") {
+            ?: if (finalType == "note") {
                 noteObj?.get("body")
             } else {
                 taskObj?.get("body")
@@ -155,7 +179,7 @@ object JsonParser {
             ?: JsonNull
 
         return buildJsonObject {
-            put("type", typeValue)
+            put("type", JsonPrimitive(finalType))
             put("title", titleValue)
             put("body", bodyValue)
             put("due_date", dueDateValue)
@@ -168,11 +192,15 @@ object JsonParser {
 
     private fun normalizeType(
         type: JsonElement?,
+        originalText: String,
         hasNoteObject: Boolean,
         hasTaskObject: Boolean,
     ): JsonPrimitive {
+        val inferred = inferTypeFromInput(originalText)
         val fallback = when {
             hasNoteObject && !hasTaskObject -> "note"
+            hasTaskObject && !hasNoteObject -> "task"
+            inferred != "unknown" -> inferred
             else -> "task"
         }
         val explicit = when (type) {
@@ -209,6 +237,67 @@ object JsonParser {
                 if (content.isEmpty()) JsonArray(emptyList()) else JsonArray(listOf(JsonPrimitive(content.removePrefix("#"))))
             }
             else -> JsonArray(emptyList())
+        }
+    }
+
+    private fun normalizeConfidence(confidence: JsonElement): JsonPrimitive {
+        val fallback = JsonPrimitive(0.85f)
+        val primitive = confidence as? JsonPrimitive ?: return fallback
+        val raw = primitiveText(primitive)?.trim()?.lowercase() ?: return fallback
+
+        val mapped = when (raw) {
+            "high" -> 0.9f
+            "medium", "med" -> 0.6f
+            "low" -> 0.3f
+            else -> {
+                val numeric = raw.removeSuffix("%").toFloatOrNull()
+                when {
+                    numeric == null -> null
+                    raw.endsWith("%") -> (numeric / 100f)
+                    numeric > 1.0f && numeric <= 100.0f -> (numeric / 100f)
+                    else -> numeric
+                }
+            }
+        } ?: return fallback
+
+        return JsonPrimitive(mapped.coerceIn(0.0f, 1.0f))
+    }
+
+    private fun adjustTypeForInput(
+        requestedType: String,
+        originalText: String,
+        dueDate: JsonElement,
+        dueTime: JsonElement,
+    ): String {
+        val inferred = inferTypeFromInput(originalText)
+        val hasDueDate = dueDate !is JsonNull
+        val hasDueTime = dueTime !is JsonNull
+
+        if (requestedType == "note" && (hasDueDate || hasDueTime)) return "task"
+        if (inferred == "task" && requestedType == "note") return "task"
+        if (inferred == "note" && requestedType == "task" && !hasDueDate && !hasDueTime) return "note"
+        return requestedType
+    }
+
+    private fun inferTypeFromInput(originalText: String): String {
+        val lower = originalText.lowercase()
+        val taskPatterns = listOf(
+            Regex("\\b(remind|schedule|call|book|submit|pay|email|check|follow up|todo|to do|task)\\b"),
+            Regex("\\b(today|tomorrow|tonight|next week|in \\d+ (day|days|week|weeks))\\b"),
+            Regex("\\b\\d{1,2}[:.]\\d{2}\\b"),
+            Regex("\\b\\d{1,2}(am|pm)\\b"),
+        )
+        val notePatterns = listOf(
+            Regex("\\b(note|idea|thought|quote|takeaway|retro|journal|observation|insight)\\b"),
+            Regex("\\b(remember this|learned|i noticed|travel thought)\\b"),
+        )
+
+        val taskScore = taskPatterns.count { it.containsMatchIn(lower) }
+        val noteScore = notePatterns.count { it.containsMatchIn(lower) }
+        return when {
+            taskScore > noteScore -> "task"
+            noteScore > taskScore -> "note"
+            else -> "unknown"
         }
     }
 
