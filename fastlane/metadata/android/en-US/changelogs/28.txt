@@ -1,0 +1,7 @@
+- New Calendar view with monthly and weekly layouts
+- Tasks appear on calendar with priority color coding (red/green/gray)
+- Notes appear on calendar by creation date (cyan)
+- Tap any day to see a list of events; tap an event to view details
+- New Task Detail screen with complete toggle and delete
+- New Note Detail screen with full body view and delete
+- Calendar added as dedicated tab in bottom navigation
