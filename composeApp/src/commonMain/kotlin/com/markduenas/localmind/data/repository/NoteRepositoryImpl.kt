@@ -11,6 +11,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.time.Clock
+import kotlinx.datetime.LocalDate
 
 class NoteRepositoryImpl(
     private val db: LocalMindDb
@@ -60,6 +61,15 @@ class NoteRepositoryImpl(
     override fun searchNotes(query: String): Flow<List<Note>> {
         val searchQuery = "%$query%"
         return queries.searchNotes(searchQuery, searchQuery, searchQuery)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { notes -> notes.map { it.toDomainNote() } }
+    }
+
+    override fun getNotesByDateRange(start: LocalDate, end: LocalDate): Flow<List<Note>> {
+        val startMs = start.toEpochDays().toLong() * 86_400L * 1_000L
+        val endMs = (end.toEpochDays().toLong() + 1L) * 86_400L * 1_000L
+        return queries.getNotesByDateRange(startMs, endMs)
             .asFlow()
             .mapToList(Dispatchers.IO)
             .map { notes -> notes.map { it.toDomainNote() } }

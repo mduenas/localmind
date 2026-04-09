@@ -8,6 +8,9 @@ sealed class Screen {
     data object Today : Screen()
 
     @Serializable
+    data object Calendar : Screen()
+
+    @Serializable
     data object Upcoming : Screen()
 
     @Serializable
@@ -24,4 +27,10 @@ sealed class Screen {
 
     @Serializable
     data class ParseReview(val captureText: String) : Screen()
+
+    @Serializable
+    data class TaskDetail(val taskId: String) : Screen()
+
+    @Serializable
+    data class NoteDetail(val noteId: String) : Screen()
 }

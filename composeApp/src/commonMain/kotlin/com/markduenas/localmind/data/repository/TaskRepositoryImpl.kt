@@ -44,6 +44,13 @@ class TaskRepositoryImpl(
             .map { tasks -> tasks.map { it.toDomainTask() } }
     }
 
+    override fun getTasksByDateRange(start: LocalDate, end: LocalDate): Flow<List<Task>> {
+        return queries.getTasksByDateRange(start.toEpochDaysLong(), end.toEpochDaysLong())
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { tasks -> tasks.map { it.toDomainTask() } }
+    }
+
     override fun getAllTasks(): Flow<List<Task>> {
         return queries.getAllActiveTasks()
             .asFlow()

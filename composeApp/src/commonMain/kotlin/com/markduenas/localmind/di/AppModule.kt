@@ -18,13 +18,17 @@ import com.markduenas.localmind.data.repository.TaskRepositoryImpl
 import com.markduenas.localmind.domain.usecase.CompleteTaskUseCase
 import com.markduenas.localmind.domain.usecase.CreateNoteUseCase
 import com.markduenas.localmind.domain.usecase.CreateTaskUseCase
+import com.markduenas.localmind.domain.usecase.GetCalendarItemsUseCase
 import com.markduenas.localmind.domain.usecase.GetTodayTasksUseCase
 import com.markduenas.localmind.domain.usecase.GetUpcomingTasksUseCase
 import com.markduenas.localmind.domain.usecase.ParseCaptureUseCase
+import com.markduenas.localmind.ui.calendar.CalendarViewModel
 import com.markduenas.localmind.ui.capture.CaptureViewModel
+import com.markduenas.localmind.ui.notes.NoteDetailViewModel
 import com.markduenas.localmind.ui.notes.NoteListViewModel
 import com.markduenas.localmind.ui.review.ParseReviewViewModel
 import com.markduenas.localmind.ui.settings.SettingsViewModel
+import com.markduenas.localmind.ui.tasks.TaskDetailViewModel
 import com.markduenas.localmind.ui.tasks.TaskListViewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.factoryOf
@@ -56,6 +60,7 @@ val appModule = module {
     // Use cases
     factoryOf(::GetTodayTasksUseCase)
     factoryOf(::GetUpcomingTasksUseCase)
+    factoryOf(::GetCalendarItemsUseCase)
     factoryOf(::CreateTaskUseCase)
     factoryOf(::CreateNoteUseCase)
     factoryOf(::CompleteTaskUseCase)
@@ -72,6 +77,9 @@ val appModule = module {
     viewModelOf(::CaptureViewModel)
     viewModelOf(::ParseReviewViewModel)
     viewModelOf(::TaskListViewModel)
+    viewModelOf(::TaskDetailViewModel)
     viewModelOf(::NoteListViewModel)
+    viewModelOf(::NoteDetailViewModel)
+    viewModelOf(::CalendarViewModel)
     viewModelOf(::SettingsViewModel)
 }

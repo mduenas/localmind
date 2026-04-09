@@ -6,12 +6,15 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.markduenas.localmind.ui.calendar.CalendarScreen
 import com.markduenas.localmind.ui.capture.CaptureScreen
+import com.markduenas.localmind.ui.notes.NoteDetailScreen
 import com.markduenas.localmind.ui.notes.NotesScreen
 import com.markduenas.localmind.ui.review.ParseReviewScreen
 import com.markduenas.localmind.ui.review.SaveResult
 import com.markduenas.localmind.ui.settings.SettingsScreen
 import com.markduenas.localmind.ui.tasks.AllTasksScreen
+import com.markduenas.localmind.ui.tasks.TaskDetailScreen
 import com.markduenas.localmind.ui.tasks.TodayScreen
 import com.markduenas.localmind.ui.tasks.UpcomingScreen
 import kotlinx.datetime.TimeZone
@@ -30,6 +33,16 @@ fun NavGraph(
     ) {
         composable<Screen.Today> {
             TodayScreen()
+        }
+        composable<Screen.Calendar> {
+            CalendarScreen(
+                onNavigateToTask = { taskId ->
+                    navController.navigate(Screen.TaskDetail(taskId))
+                },
+                onNavigateToNote = { noteId ->
+                    navController.navigate(Screen.NoteDetail(noteId))
+                },
+            )
         }
         composable<Screen.Upcoming> {
             UpcomingScreen()
@@ -75,6 +88,20 @@ fun NavGraph(
                     }
                 },
                 onDiscard = { navController.popBackStack() },
+            )
+        }
+        composable<Screen.TaskDetail> { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.TaskDetail>()
+            TaskDetailScreen(
+                taskId = route.taskId,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable<Screen.NoteDetail> { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.NoteDetail>()
+            NoteDetailScreen(
+                noteId = route.noteId,
+                onBack = { navController.popBackStack() },
             )
         }
     }

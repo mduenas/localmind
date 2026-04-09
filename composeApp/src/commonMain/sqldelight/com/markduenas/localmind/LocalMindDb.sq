@@ -72,6 +72,9 @@ DELETE FROM tasks WHERE id = ?;
 searchTasks:
 SELECT * FROM tasks WHERE title LIKE ? OR original_text LIKE ? ORDER BY created_at DESC;
 
+getTasksByDateRange:
+SELECT * FROM tasks WHERE due_date >= ? AND due_date <= ? AND status != 2 ORDER BY due_date ASC, priority DESC;
+
 -- Tag queries
 getAllTags:
 SELECT * FROM tags ORDER BY name;
@@ -140,6 +143,9 @@ DELETE FROM notes WHERE id = ?;
 
 searchNotes:
 SELECT * FROM notes WHERE title LIKE ? OR body LIKE ? OR original_text LIKE ? ORDER BY created_at DESC;
+
+getNotesByDateRange:
+SELECT * FROM notes WHERE created_at >= ? AND created_at < ? ORDER BY created_at ASC;
 
 getTagsForNote:
 SELECT tags.* FROM tags
