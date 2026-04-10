@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+
+## Memory
+
+Use the **SimpleMem** MCP (`simplemem` tool) to store and retrieve project memory across sessions.
+- Store: decisions, settings, file structure, user preferences, TODOs, constraints, recurring patterns
+- Retrieve: query at the start of each session and before making significant decisions
+- Tools: `memory_add`, `memory_query`, `memory_retrieve`, `memory_stats`, `memory_clear`
+- Only save information that will be helpful across sessions.
+
 ## Project Overview
 
 LocalMind is a Kotlin Multiplatform (KMP) cross-platform productivity application for Android (API 24+) and iOS (15+). It's an AI-powered task and note manager with a privacy-first, fully offline approach.
