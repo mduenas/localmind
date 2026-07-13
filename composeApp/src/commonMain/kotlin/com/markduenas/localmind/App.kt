@@ -4,21 +4,29 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.markduenas.localmind.domain.usecase.DrainCaptureQueueUseCase
 import com.markduenas.localmind.ui.components.FloatingCaptureButton
 import com.markduenas.localmind.ui.navigation.BottomNavBar
 import com.markduenas.localmind.ui.navigation.NavGraph
 import com.markduenas.localmind.ui.navigation.Screen
 import com.markduenas.localmind.ui.navigation.bottomNavItems
 import com.markduenas.localmind.ui.theme.LocalMindTheme
+import org.koin.compose.koinInject
 
 @Composable
 fun App() {
     LocalMindTheme {
+        val drainCaptureQueue = koinInject<DrainCaptureQueueUseCase>()
+        LaunchedEffect(Unit) {
+            drainCaptureQueue()
+        }
+
         val navController = rememberNavController()
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val destination = navBackStackEntry?.destination

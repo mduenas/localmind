@@ -18,10 +18,13 @@ import com.markduenas.localmind.data.repository.TaskRepositoryImpl
 import com.markduenas.localmind.domain.usecase.CompleteTaskUseCase
 import com.markduenas.localmind.domain.usecase.CreateNoteUseCase
 import com.markduenas.localmind.domain.usecase.CreateTaskUseCase
+import com.markduenas.localmind.domain.usecase.DrainCaptureQueueUseCase
+import com.markduenas.localmind.domain.usecase.EnqueueCaptureUseCase
 import com.markduenas.localmind.domain.usecase.GetCalendarItemsUseCase
 import com.markduenas.localmind.domain.usecase.GetTodayTasksUseCase
 import com.markduenas.localmind.domain.usecase.GetUpcomingTasksUseCase
 import com.markduenas.localmind.domain.usecase.ParseCaptureUseCase
+import com.markduenas.localmind.domain.usecase.ProcessCaptureUseCase
 import com.markduenas.localmind.ui.calendar.CalendarViewModel
 import com.markduenas.localmind.ui.capture.CaptureViewModel
 import com.markduenas.localmind.ui.notes.NoteDetailViewModel
@@ -72,6 +75,9 @@ val appModule = module {
             isPremium = { get<SettingsRepository>().premiumActive.value },
         )
     }
+    singleOf(::ProcessCaptureUseCase)
+    singleOf(::EnqueueCaptureUseCase)
+    factoryOf(::DrainCaptureQueueUseCase)
 
     // ViewModels
     viewModelOf(::CaptureViewModel)

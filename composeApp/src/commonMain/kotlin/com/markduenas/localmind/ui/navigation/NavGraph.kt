@@ -58,11 +58,7 @@ fun NavGraph(
         }
         composable<Screen.Capture> {
             CaptureScreen(
-                onSubmit = { captureText ->
-                    navController.navigate(Screen.ParseReview(captureText)) {
-                        popUpTo<Screen.Capture> { inclusive = true }
-                    }
-                },
+                onCaptured = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
             )
         }

@@ -3,17 +3,14 @@ package com.markduenas.localmind
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import com.markduenas.localmind.data.repository.CaptureRepository
-import com.markduenas.localmind.domain.model.Capture
-import com.benasher44.uuid.uuid4
+import com.markduenas.localmind.domain.usecase.EnqueueCaptureUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
 import org.koin.android.ext.android.inject
 
 class ShareReceiverActivity : ComponentActivity() {
-    private val captureRepository: CaptureRepository by inject()
+    private val enqueueCapture: EnqueueCaptureUseCase by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,15 +19,7 @@ class ShareReceiverActivity : ComponentActivity() {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
             if (!sharedText.isNullOrBlank()) {
                 CoroutineScope(Dispatchers.IO).launch {
-                    captureRepository.save(
-                        Capture(
-                            id = uuid4().toString(),
-                            rawText = sharedText,
-                            audioPath = null,
-                            createdAt = Clock.System.now(),
-                            processed = false,
-                        )
-                    )
+                    enqueueCapture(sharedText)
                 }
 
                 val launchIntent = Intent(this, MainActivity::class.java).apply {

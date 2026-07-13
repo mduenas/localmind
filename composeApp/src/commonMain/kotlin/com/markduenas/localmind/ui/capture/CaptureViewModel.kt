@@ -2,6 +2,7 @@ package com.markduenas.localmind.ui.capture
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.markduenas.localmind.domain.usecase.EnqueueCaptureUseCase
 import com.markduenas.localmind.platform.PermissionHelper
 import com.markduenas.localmind.platform.SpeechRecognitionService
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,12 +24,13 @@ data class CaptureUiState(
 class CaptureViewModel(
     private val speechService: SpeechRecognitionService,
     private val permissionHelper: PermissionHelper,
+    private val enqueueCapture: EnqueueCaptureUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
-    private val _autoSubmit = MutableSharedFlow<String>(extraBufferCapacity = 1)
-    val autoSubmit: SharedFlow<String> = _autoSubmit.asSharedFlow()
+    private val _captured = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val captured: SharedFlow<Unit> = _captured.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -42,7 +44,7 @@ class CaptureViewModel(
                     _uiState.update { it.copy(inputText = result.text) }
                 }
                 if (result.isFinal && result.error == null && result.text.isNotBlank()) {
-                    _autoSubmit.tryEmit(result.text.trim())
+                    submit(result.text.trim())
                 }
                 result.error?.let { error ->
                     _uiState.update { it.copy(error = error) }
@@ -55,10 +57,18 @@ class CaptureViewModel(
         _uiState.update { it.copy(inputText = text) }
     }
 
-    fun onSubmit(): String? {
+    fun submit() {
         val text = _uiState.value.inputText.trim()
-        if (text.isBlank()) return null
-        return text
+        if (text.isBlank()) return
+        submit(text)
+    }
+
+    private fun submit(text: String) {
+        viewModelScope.launch {
+            enqueueCapture(text)
+            _uiState.update { it.copy(inputText = "") }
+            _captured.tryEmit(Unit)
+        }
     }
 
     fun toggleRecording() {

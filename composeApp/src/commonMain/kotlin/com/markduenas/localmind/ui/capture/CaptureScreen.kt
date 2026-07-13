@@ -35,19 +35,23 @@ import androidx.compose.ui.unit.dp
 import com.markduenas.localmind.platform.SpeechActivityFallbackEffect
 import com.markduenas.localmind.platform.SpeechPermissionEffect
 import com.markduenas.localmind.platform.SpeechRecognitionService
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
+private const val CAPTURED_CONFIRMATION_MILLIS = 350L
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaptureScreen(
-    onSubmit: (String) -> Unit,
+    onCaptured: () -> Unit,
     onBack: () -> Unit,
     viewModel: CaptureViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
+    var justCaptured by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val speechService = koinInject<SpeechRecognitionService>()
@@ -67,8 +71,10 @@ fun CaptureScreen(
     }
 
     LaunchedEffect(viewModel) {
-        viewModel.autoSubmit.collect { text ->
-            onSubmit(text)
+        viewModel.captured.collect {
+            justCaptured = true
+            delay(CAPTURED_CONFIRMATION_MILLIS)
+            onCaptured()
         }
     }
 
@@ -85,59 +91,69 @@ fun CaptureScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-        ) {
-            @OptIn(ExperimentalMaterial3Api::class)
-            PrimaryTabRow(selectedTabIndex = selectedTab) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("Voice") },
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Text") },
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            when (selectedTab) {
-                0 -> VoiceCaptureCard(
-                    isRecording = state.isRecording,
-                    onToggleRecording = viewModel::toggleRecording,
-                )
-                1 -> TextCaptureCard(
-                    text = state.inputText,
-                    onTextChanged = viewModel::onTextChanged,
-                )
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+        if (justCaptured) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
             ) {
-                OutlinedButton(
-                    onClick = onBack,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("Cancel")
+                Text("Captured ✓", style = MaterialTheme.typography.headlineSmall)
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+            ) {
+                @OptIn(ExperimentalMaterial3Api::class)
+                PrimaryTabRow(selectedTabIndex = selectedTab) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("Voice") },
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("Text") },
+                    )
                 }
-                Button(
-                    onClick = {
-                        viewModel.onSubmit()?.let { text -> onSubmit(text) }
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = state.inputText.isNotBlank(),
+
+                Spacer(Modifier.height(16.dp))
+
+                when (selectedTab) {
+                    0 -> VoiceCaptureCard(
+                        isRecording = state.isRecording,
+                        onToggleRecording = viewModel::toggleRecording,
+                    )
+                    1 -> TextCaptureCard(
+                        text = state.inputText,
+                        onTextChanged = viewModel::onTextChanged,
+                    )
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text("Parse & Review")
+                    OutlinedButton(
+                        onClick = onBack,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = { viewModel.submit() },
+                        modifier = Modifier.weight(1f),
+                        enabled = state.inputText.isNotBlank(),
+                    ) {
+                        Text("Capture")
+                    }
                 }
             }
         }
