@@ -9,7 +9,6 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.filled.Checklist
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -26,7 +25,6 @@ val bottomNavItems = listOf(
     BottomNavItem("Upcoming", Icons.Default.DateRange, Screen.Upcoming),
     BottomNavItem("All", Icons.Default.Checklist, Screen.AllTasks),
     BottomNavItem("Notes", Icons.AutoMirrored.Filled.StickyNote2, Screen.Notes),
-    BottomNavItem("Settings", Icons.Default.Settings, Screen.Settings),
 )
 
 @Composable

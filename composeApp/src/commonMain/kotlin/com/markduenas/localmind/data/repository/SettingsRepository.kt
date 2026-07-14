@@ -19,6 +19,9 @@ class SettingsRepository(private val settings: PlatformSettings) {
     private val _premiumActive = MutableStateFlow(settings.getBoolean(KEY_PREMIUM_ACTIVE, false))
     val premiumActive: StateFlow<Boolean> = _premiumActive.asStateFlow()
 
+    private val _defaultToTextCapture = MutableStateFlow(settings.getBoolean(KEY_DEFAULT_TO_TEXT_CAPTURE, false))
+    val defaultToTextCapture: StateFlow<Boolean> = _defaultToTextCapture.asStateFlow()
+
     fun setLlmEnabled(enabled: Boolean) {
         _llmEnabled.value = enabled
         settings.putBoolean(KEY_LLM_ENABLED, enabled)
@@ -42,6 +45,11 @@ class SettingsRepository(private val settings: PlatformSettings) {
         }
     }
 
+    fun setDefaultToTextCapture(enabled: Boolean) {
+        _defaultToTextCapture.value = enabled
+        settings.putBoolean(KEY_DEFAULT_TO_TEXT_CAPTURE, enabled)
+    }
+
     fun getString(key: String, default: String = ""): String = settings.getString(key, default)
 
     fun putString(key: String, value: String) {
@@ -54,5 +62,6 @@ class SettingsRepository(private val settings: PlatformSettings) {
         private const val KEY_SELECTED_LLM_MODEL = "selected_llm_model"
         private const val KEY_PREMIUM_ACTIVE = "premium_active"
         private const val KEY_PREMIUM_PRODUCT_ID = "premium_product_id"
+        private const val KEY_DEFAULT_TO_TEXT_CAPTURE = "default_to_text_capture"
     }
 }

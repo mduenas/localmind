@@ -34,7 +34,13 @@ actual class SpeechRecognitionService(
 
     private var recognizer: SpeechRecognizer? = null
     private var errorHandled = false
+    private var languageUnavailableRetryCount = 0
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    private companion object {
+        private const val MAX_LANGUAGE_UNAVAILABLE_RETRIES = 1
+        private const val LANGUAGE_UNAVAILABLE_RETRY_DELAY_MS = 400L
+    }
 
     private fun findRecognitionService(): ComponentName? {
         val intent = Intent(RecognitionService.SERVICE_INTERFACE)
@@ -52,6 +58,11 @@ actual class SpeechRecognitionService(
     }
 
     actual fun startListening() {
+        languageUnavailableRetryCount = 0
+        startListeningInternal()
+    }
+
+    private fun startListeningInternal() {
         mainHandler.post {
             try {
                 destroyRecognizer()
@@ -112,6 +123,24 @@ actual class SpeechRecognitionService(
                             return
                         }
 
+                        // The on-device recognizer often isn't warmed up yet on the very
+                        // first call in a session and reports the language as unavailable —
+                        // this is transient and normally succeeds on an immediate retry.
+                        if (error == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE) {
+                            if (languageUnavailableRetryCount < MAX_LANGUAGE_UNAVAILABLE_RETRIES) {
+                                languageUnavailableRetryCount++
+                                mainHandler.postDelayed(
+                                    { startListeningInternal() },
+                                    LANGUAGE_UNAVAILABLE_RETRY_DELAY_MS,
+                                )
+                                return
+                            }
+                            // Still unavailable (e.g. on-device language pack missing) —
+                            // fall back to the system voice-input activity instead of failing.
+                            launchRecognitionActivity()
+                            return
+                        }
+
                         val message = when (error) {
                             SpeechRecognizer.ERROR_NO_MATCH -> "No speech detected"
                             SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech detected"
@@ -120,7 +149,7 @@ actual class SpeechRecognitionService(
                             SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
                             SpeechRecognizer.ERROR_SERVER -> "Server error"
                             SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
-                            else -> "Recognition error ($error)"
+                            else -> "Voice recognition failed — try again or use text capture"
                         }
                         _result.value = SpeechResult(
                             text = _result.value.text,

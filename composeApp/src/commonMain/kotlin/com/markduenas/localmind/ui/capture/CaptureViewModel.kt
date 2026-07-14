@@ -2,6 +2,7 @@ package com.markduenas.localmind.ui.capture
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.markduenas.localmind.data.repository.SettingsRepository
 import com.markduenas.localmind.domain.usecase.EnqueueCaptureUseCase
 import com.markduenas.localmind.platform.PermissionHelper
 import com.markduenas.localmind.platform.SpeechRecognitionService
@@ -19,15 +20,19 @@ data class CaptureUiState(
     val isRecording: Boolean = false,
     val error: String? = null,
     val needsSpeechPermission: Boolean = false,
+    val defaultToTextCapture: Boolean = false,
 )
 
 class CaptureViewModel(
     private val speechService: SpeechRecognitionService,
     private val permissionHelper: PermissionHelper,
     private val enqueueCapture: EnqueueCaptureUseCase,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(CaptureUiState())
+    private val _uiState = MutableStateFlow(
+        CaptureUiState(defaultToTextCapture = settingsRepository.defaultToTextCapture.value)
+    )
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
     private val _captured = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val captured: SharedFlow<Unit> = _captured.asSharedFlow()
@@ -50,6 +55,10 @@ class CaptureViewModel(
                     _uiState.update { it.copy(error = error) }
                 }
             }
+        }
+
+        if (!_uiState.value.defaultToTextCapture) {
+            startListening()
         }
     }
 

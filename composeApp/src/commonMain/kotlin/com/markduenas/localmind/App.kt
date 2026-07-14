@@ -2,7 +2,15 @@ package com.markduenas.localmind
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,6 +27,7 @@ import com.markduenas.localmind.ui.navigation.bottomNavItems
 import com.markduenas.localmind.ui.theme.LocalMindTheme
 import org.koin.compose.koinInject
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
     LocalMindTheme {
@@ -36,9 +45,31 @@ fun App() {
         }?.screen
 
         val isBottomNavScreen = currentScreen != null
+        val isSettingsScreen = destination?.hasRoute(Screen.Settings::class) == true
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
+            topBar = {
+                if (isBottomNavScreen) {
+                    TopAppBar(
+                        title = { Text(currentScreen?.let { screen -> bottomNavItems.first { it.screen == screen }.label } ?: "") },
+                        actions = {
+                            IconButton(onClick = { navController.navigate(Screen.Settings) }) {
+                                Icon(Icons.Default.Settings, contentDescription = "Settings")
+                            }
+                        },
+                    )
+                } else if (isSettingsScreen) {
+                    TopAppBar(
+                        title = { Text("Settings") },
+                        navigationIcon = {
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        },
+                    )
+                }
+            },
             bottomBar = {
                 if (isBottomNavScreen) {
                     BottomNavBar(

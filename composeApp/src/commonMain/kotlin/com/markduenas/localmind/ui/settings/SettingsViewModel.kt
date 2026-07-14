@@ -43,6 +43,7 @@ data class SettingsUiState(
     val purchaseInProgress: Boolean = false,
     val restoreInProgress: Boolean = false,
     val appVersion: String = "unknown",
+    val defaultToTextCapture: Boolean = false,
 )
 
 @Serializable
@@ -112,6 +113,7 @@ class SettingsViewModel(
         _showPaywall,
         _purchaseInProgress,
         _restoreInProgress,
+        settingsRepository.defaultToTextCapture,
     ) { values ->
         val llm = values[0] as Boolean
         val notifications = values[1] as Boolean
@@ -125,6 +127,7 @@ class SettingsViewModel(
         val showPaywall = values[8] as Boolean
         val purchaseInProgress = values[9] as Boolean
         val restoreInProgress = values[10] as Boolean
+        val defaultToTextCapture = values[11] as Boolean
 
         val downloaded = modelManager.getDownloadedModels()
         val effectiveSelected = selectedModel.ifEmpty { AIConfig.DEFAULT_LLM_MODEL }
@@ -142,6 +145,7 @@ class SettingsViewModel(
             purchaseInProgress = purchaseInProgress,
             restoreInProgress = restoreInProgress,
             appVersion = appVersion,
+            defaultToTextCapture = defaultToTextCapture,
         )
     }.stateIn(
         viewModelScope,
@@ -178,6 +182,10 @@ class SettingsViewModel(
 
     fun dismissDownloadError() {
         modelDownloadService.dismissError()
+    }
+
+    fun setDefaultToTextCapture(enabled: Boolean) {
+        settingsRepository.setDefaultToTextCapture(enabled)
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {

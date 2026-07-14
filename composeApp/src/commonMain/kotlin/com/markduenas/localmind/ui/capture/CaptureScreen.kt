@@ -50,7 +50,7 @@ fun CaptureScreen(
     viewModel: CaptureViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableStateOf(if (state.defaultToTextCapture) 1 else 0) }
     var justCaptured by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 

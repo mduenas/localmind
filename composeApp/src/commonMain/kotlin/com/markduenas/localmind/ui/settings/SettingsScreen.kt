@@ -70,6 +70,38 @@ fun SettingsScreen(
 
         HorizontalDivider()
 
+        // Capture defaults
+        Column {
+            Text(
+                text = "Capture",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Default to Text Capture",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = "Open Capture on the Text tab instead of starting voice recognition",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = state.defaultToTextCapture,
+                    onCheckedChange = viewModel::setDefaultToTextCapture,
+                )
+            }
+        }
+
+        HorizontalDivider()
+
         // LLM toggle
         Column {
             Text(
