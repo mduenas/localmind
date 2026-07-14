@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -44,7 +45,10 @@ class CaptureViewModel(
             }
         }
         viewModelScope.launch {
-            speechService.result.collect { result ->
+            // speechService.result is a shared StateFlow that retains its last value
+            // (e.g. the final transcript from a previous capture). Drop that stale
+            // replay so a fresh capture screen doesn't immediately resubmit it.
+            speechService.result.drop(1).collect { result ->
                 if (result.text.isNotEmpty()) {
                     _uiState.update { it.copy(inputText = result.text) }
                 }
