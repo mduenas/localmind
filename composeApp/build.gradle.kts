@@ -109,7 +109,7 @@ android {
         applicationId = "com.markduenas.localmind"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 47
+        versionCode = 48
         versionName = "1.0.40"
     }
 
