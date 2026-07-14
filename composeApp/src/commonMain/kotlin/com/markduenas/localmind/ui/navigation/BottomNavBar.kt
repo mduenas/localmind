@@ -21,10 +21,10 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem("Today", Icons.Default.Today, Screen.Today),
-    BottomNavItem("Calendar", Icons.Default.CalendarMonth, Screen.Calendar),
-    BottomNavItem("Upcoming", Icons.Default.DateRange, Screen.Upcoming),
-    BottomNavItem("All", Icons.Default.Checklist, Screen.AllTasks),
     BottomNavItem("Notes", Icons.AutoMirrored.Filled.StickyNote2, Screen.Notes),
+    BottomNavItem("Upcoming", Icons.Default.DateRange, Screen.Upcoming),
+    BottomNavItem("Calendar", Icons.Default.CalendarMonth, Screen.Calendar),
+    BottomNavItem("All", Icons.Default.Checklist, Screen.AllTasks),
 )
 
 @Composable
