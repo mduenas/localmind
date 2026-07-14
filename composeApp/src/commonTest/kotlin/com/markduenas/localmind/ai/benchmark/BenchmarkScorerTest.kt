@@ -22,7 +22,7 @@ class BenchmarkScorerTest {
         val capture = ParsedCapture.TaskCapture(
             task = ParsedTask(
                 title = "Call mom",
-                dueDate = today.plus(1, DateTimeUnit.DAY),
+                dueDate = today,
                 dueTime = kotlinx.datetime.LocalTime.parse("18:00"),
                 priority = Priority.MEDIUM,
                 tags = emptyList(),
@@ -71,7 +71,7 @@ class BenchmarkScorerTest {
 
     @Test
     fun aggregateIncludesTimeoutAndPromptLengthMetrics() {
-        val shortTaskFixture = BenchmarkFixtures.suite.prompts.first { it.id == "task_03" }
+        val shortTaskFixture = BenchmarkFixtures.suite.prompts.first { it.id == "task_04" }
         val longNoteFixture = BenchmarkFixtures.suite.prompts.first { it.id == "note_03" }
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
 

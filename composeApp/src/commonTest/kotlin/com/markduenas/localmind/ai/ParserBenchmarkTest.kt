@@ -1,5 +1,6 @@
 package com.markduenas.localmind.ai
 
+import com.markduenas.localmind.ai.benchmark.BenchmarkLiveLogger
 import com.markduenas.localmind.domain.model.ParseResult
 import com.markduenas.localmind.domain.model.ParsedCapture
 import com.markduenas.localmind.domain.model.ParsedTask
@@ -215,5 +216,45 @@ class ParserBenchmarkTest {
         println("=================================")
 
         assertEquals(ALL_PROMPTS.size, successCount)
+    }
+
+    /**
+     * Runs all 200 benchmark fixtures through [RuleBasedParser] and prints
+     * per-prompt input → output with timing, then aggregate accuracy/latency stats.
+     *
+     * This is the canonical JVM rule-based baseline for the full fixture suite.
+     */
+    @Test
+    fun benchmarkAll200() {
+        val fixtures = com.markduenas.localmind.ai.benchmark.BenchmarkFixtures.suite
+
+        BenchmarkLiveLogger.header("rule-based", fixtures.suiteVersion, fixtures.prompts.size)
+
+        val evaluations = fixtures.prompts.map { fixture ->
+            val started = Clock.System.now()
+            val parsed = parser.parse(fixture.prompt)
+            val latencyMs = (Clock.System.now() - started).inWholeMilliseconds
+            val eval = com.markduenas.localmind.ai.benchmark.BenchmarkScorer.scorePrompt(
+                fixture = fixture,
+                capture = parsed,
+                latencyMs = latencyMs,
+                validJson = true,
+                fallbackUsed = false,
+            )
+            BenchmarkLiveLogger.prompt(fixture, eval, parsed)
+            eval
+        }
+
+        val result = com.markduenas.localmind.ai.benchmark.BenchmarkScorer.aggregate(
+            model = "rule-based",
+            cacheHit = true,
+            evaluations = evaluations,
+        )
+        BenchmarkLiveLogger.summary(result)
+
+        assertTrue(
+            result.classificationAccuracy >= 0.70,
+            "Rule-based classification accuracy dropped below 70%: ${result.classificationAccuracy}",
+        )
     }
 }

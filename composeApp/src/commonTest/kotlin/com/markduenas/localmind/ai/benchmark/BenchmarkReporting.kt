@@ -1,6 +1,8 @@
 package com.markduenas.localmind.ai.benchmark
 
 import com.markduenas.localmind.ai.AIConfig
+import com.markduenas.localmind.domain.model.ParsedCapture
+import kotlin.math.roundToInt
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -37,6 +39,7 @@ object BenchmarkModelCatalog {
     val primaryCandidates = listOf(
         AIConfig.TINY_LLM_MODEL,
         AIConfig.FUNCTION_TINY_LLM_MODEL,
+        "gemma3-1b",
     )
 
     // Snapshot-style shortlist for selecting a third benchmark model.
@@ -51,8 +54,8 @@ object BenchmarkModelCatalog {
     val catalog = listOf(
         ModelCatalogEntry(slug = AIConfig.TINY_LLM_MODEL, approxSizeMb = 200, source = "cactus"),
         ModelCatalogEntry(slug = AIConfig.FUNCTION_TINY_LLM_MODEL, approxSizeMb = 400, source = "cactus"),
-        ModelCatalogEntry(slug = "llama3.2-1b", approxSizeMb = 1300, source = "cactus"),
-        ModelCatalogEntry(slug = "qwen2.5-1.5b", approxSizeMb = 1500, source = "cactus"),
+        ModelCatalogEntry(slug = "gemma3-1b", approxSizeMb = 700, source = "cactus"),
+        ModelCatalogEntry(slug = "qwen3-1.7", approxSizeMb = 1100, source = "cactus"),
         ModelCatalogEntry(slug = "phi-3.5-mini", approxSizeMb = 1900, source = "cactus"),
         ModelCatalogEntry(slug = "gemma2-2b", approxSizeMb = 2000, source = "cactus"),
     )
@@ -295,4 +298,96 @@ object BenchmarkReportRenderer {
         val singleLine = value.replace("\n", " ").replace("\r", " ").replace("|", "\\|").trim()
         return if (singleLine.length <= maxLen) singleLine else singleLine.take(maxLen - 3) + "..."
     }
+}
+
+/**
+ * Prints live per-prompt output and aggregate summaries to stdout during a benchmark run.
+ *
+ * Each prompt prints two lines:
+ *   task_01   ✓   2ms  TASK  "Call mom"  date=2026-05-04 time=18:00 pri=MEDIUM tags=[]
+ *                       ← "remind me to call mom before dinner at 6pm"
+ *
+ * Failures show an extra hint line explaining what was wrong.
+ */
+object BenchmarkLiveLogger {
+
+    private val LINE = "─".repeat(80)
+    private val BOLD_LINE = "━".repeat(80)
+
+    fun header(model: String, suiteVersion: String, promptCount: Int) {
+        println()
+        println(BOLD_LINE)
+        println("  BENCHMARK  model=$model  suite=$suiteVersion  prompts=$promptCount")
+        println(BOLD_LINE)
+    }
+
+    /**
+     * Prints a compact result row for one evaluated prompt.
+     * Call this immediately after [BenchmarkScorer.scorePrompt] so output streams live.
+     */
+    fun prompt(
+        fixture: BenchmarkPromptFixture,
+        eval: PromptEvaluation,
+        capture: ParsedCapture,
+    ) {
+        val pass = eval.classificationCorrect && eval.fieldScore >= 1.0
+        val icon = if (pass) "✓" else "✗"
+        val ms = "${eval.latencyMs}ms".padStart(6)
+
+        val outputDesc = when (capture) {
+            is ParsedCapture.TaskCapture -> {
+                val t = capture.task
+                val date = t.dueDate?.toString() ?: "null"
+                val time = t.dueTime?.toString() ?: "null"
+                val tags = if (t.tags.isEmpty()) "" else "  tags=${t.tags}"
+                "TASK  \"${t.title.take(42)}\"  date=$date  time=$time  pri=${t.priority.name}$tags"
+            }
+            is ParsedCapture.NoteCapture -> {
+                val n = capture.note
+                "NOTE  \"${n.title.take(60)}\""
+            }
+        }
+
+        val idCol = fixture.id.padEnd(10)
+        println("$idCol $icon  $ms  $outputDesc")
+        println("${"".padEnd(10)}          ← \"${fixture.prompt.take(75)}\"")
+
+        if (!pass) {
+            val hints = mutableListOf<String>()
+            if (!eval.classificationCorrect) {
+                hints += "expected=${eval.expectedType}, got=${eval.actualType}"
+            } else {
+                val score = (eval.fieldScore * 100).roundToInt()
+                hints += "fieldScore=$score%"
+                if (eval.fallbackUsed) hints += "fallback"
+            }
+            println("${"".padEnd(10)}          ✗ ${hints.joinToString("  ")}")
+        }
+    }
+
+    fun summary(result: ModelBenchmarkResult) {
+        val total = result.promptsEvaluated
+        val correct = (result.classificationAccuracy * total).roundToInt()
+        println()
+        println(BOLD_LINE)
+        println("  RESULTS  model=${result.model}  prompts=$total")
+        println(LINE)
+        println("  Classification:   ${pct(result.classificationAccuracy)}  ($correct/$total correct)")
+        println("  Task fields:      ${pct(result.taskFieldAccuracy)}")
+        println("  Note fields:      ${pct(result.noteFieldAccuracy)}")
+        println("  Composite score:  ${result.compositeScore}")
+        if (result.fallbackRate > 0.0) {
+            println("  Fallback rate:    ${pct(result.fallbackRate)}")
+        }
+        if (result.timeoutRate > 0.0) {
+            println("  Timeout rate:     ${pct(result.timeoutRate)}")
+        }
+        println(LINE)
+        println("  Latency (all):    mean=${result.latency.meanMs}ms  p50=${result.latency.p50Ms}ms  p95=${result.latency.p95Ms}ms")
+        println("  Latency (tasks):  mean=${result.taskLatency.meanMs}ms  p50=${result.taskLatency.p50Ms}ms  p95=${result.taskLatency.p95Ms}ms")
+        println("  Latency (notes):  mean=${result.noteLatency.meanMs}ms  p50=${result.noteLatency.p50Ms}ms  p95=${result.noteLatency.p95Ms}ms")
+        println(BOLD_LINE)
+    }
+
+    private fun pct(v: Double) = "${(v * 100).roundToInt()}%"
 }

@@ -69,7 +69,7 @@ fun InferenceLogSection(
         }
 
         // Collapsible sections
-        CollapsibleText(label = "System Prompt", content = log.systemPrompt)
+        CollapsibleText(label = "System Prompt", content = log.systemPrompt ?: "(none)")
         CollapsibleText(label = "User Prompt", content = log.userPrompt)
         CollapsibleText(
             label = "Raw Response",

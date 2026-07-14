@@ -148,6 +148,13 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
 }
 
+tasks.withType<Test>().configureEach {
+    testLogging {
+        showStandardStreams = true
+        events("passed", "failed", "skipped")
+    }
+}
+
 tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest>().configureEach {
     val runBenchmark = project.findProperty("localmindRunLlmBenchmark")?.toString().orEmpty()
     val periodic = project.findProperty("localmindBenchPeriodic")?.toString().orEmpty()

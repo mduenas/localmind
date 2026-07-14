@@ -9,9 +9,13 @@ import com.markduenas.localmind.ai.JsonParser
 import com.markduenas.localmind.ai.ModelManager
 import com.markduenas.localmind.ai.Prompts
 import com.markduenas.localmind.ai.RuleBasedParser
+import com.markduenas.localmind.ai.directorySize
 import com.markduenas.localmind.domain.model.ParsedCapture
 import kotlin.test.Test
 import kotlin.time.Clock
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.TimeZone
@@ -88,6 +92,12 @@ class IosLlmBenchmarkTest {
     private suspend fun resolveBenchmarkModels(modelManager: ModelManager): List<String> {
         val primary = BenchmarkModelCatalog.primaryCandidates
 
+        println()
+        println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        println("  MODEL SETUP")
+        println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        println("  Primary models: ${primary.joinToString(", ")}")
+
         val forcedThird = envOrArg("LOCALMIND_BENCH_THIRD_MODEL")
             ?.trim()
             ?.takeIf { it.isNotBlank() }
@@ -98,8 +108,11 @@ class IosLlmBenchmarkTest {
             ?: probeThirdModelCandidate(modelManager, primary)
 
         if (third == null) {
-            println("No third model resolved; proceeding with primary model candidates only.")
+            println("  Third model: none resolved")
+        } else {
+            println("  Third model: $third")
         }
+        println()
 
         return if (third != null) primary + third else primary
     }
@@ -148,24 +161,31 @@ class IosLlmBenchmarkTest {
         prompts: List<BenchmarkPromptFixture>,
         ruleParser: RuleBasedParser,
     ): ModelBenchmarkResult {
+        val suiteVersion = BenchmarkFixtures.suite.suiteVersion
+        BenchmarkLiveLogger.header("rule-based", suiteVersion, prompts.size)
+
         val evaluations = prompts.map { fixture ->
             val started = Clock.System.now()
             val parsed = ruleParser.parse(fixture.prompt)
             val latencyMs = (Clock.System.now() - started).inWholeMilliseconds
-            BenchmarkScorer.scorePrompt(
+            val eval = BenchmarkScorer.scorePrompt(
                 fixture = fixture,
                 capture = parsed,
                 latencyMs = latencyMs,
                 validJson = true,
                 fallbackUsed = false,
             )
+            BenchmarkLiveLogger.prompt(fixture, eval, parsed)
+            eval
         }
 
-        return BenchmarkScorer.aggregate(
+        val result = BenchmarkScorer.aggregate(
             model = "rule-based",
             cacheHit = true,
             evaluations = evaluations,
         )
+        BenchmarkLiveLogger.summary(result)
+        return result
     }
 
     private suspend fun runLlmBenchmarkForModel(
@@ -187,6 +207,8 @@ class IosLlmBenchmarkTest {
             warmup(lm, modelSlug)
 
             val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+            BenchmarkLiveLogger.header(modelSlug, BenchmarkFixtures.suite.suiteVersion, prompts.size)
+
             val evaluations = prompts.map { fixture ->
                 val systemPrompt = Prompts.systemPromptForModel(modelSlug)
                 val userPrompt = Prompts.buildUserPrompt(fixture.prompt, today, modelSlug)
@@ -198,11 +220,12 @@ class IosLlmBenchmarkTest {
 
                 val firstResponseAttempt = runCatching {
                     withTimeout(AIConfig.timeoutMsForModel(modelSlug)) {
+                        val messages = buildList {
+                            if (systemPrompt != null) add(ChatMessage(content = systemPrompt, role = "system"))
+                            add(ChatMessage(content = userPrompt, role = "user"))
+                        }
                         lm.generateCompletion(
-                            messages = listOf(
-                                ChatMessage(content = systemPrompt, role = "system"),
-                                ChatMessage(content = userPrompt, role = "user"),
-                            ),
+                            messages = messages,
                             params = CactusCompletionParams(
                                 maxTokens = maxTokens,
                                 temperature = AIConfig.TEMPERATURE,
@@ -259,35 +282,75 @@ class IosLlmBenchmarkTest {
                     error = error,
                     firstError = firstError,
                     firstResponse = firstResponse,
-                )
+                ).also { eval ->
+                    BenchmarkLiveLogger.prompt(fixture, eval, scoredCapture)
+                }
             }
 
-            return BenchmarkScorer.aggregate(
+            val result = BenchmarkScorer.aggregate(
                 model = modelSlug,
                 cacheHit = cacheHit,
                 evaluations = evaluations,
             )
+            BenchmarkLiveLogger.summary(result)
+            return result
         } finally {
             lm.unload()
         }
     }
 
     private suspend fun ensureModelCached(modelManager: ModelManager, model: String): Boolean {
-        val isCached = modelManager.isModelDownloaded(model)
-        if (!isCached) {
-            modelManager.downloadModel(model)
+        val modelsDir = modelManager.getModelsDirectory()
+        println("  ? Checking $model at $modelsDir/$model ...")
+        if (modelManager.isModelDownloaded(model)) {
+            println("  ✓ $model — already downloaded")
+            return true
         }
-        return isCached
+
+        val sizeMb = AIConfig.MODEL_SIZES[model] ?: "unknown size"
+        val expectedBytes = AIConfig.MODEL_BYTES[model] ?: 0L
+
+        println("  ⬇ $model ($sizeMb) — downloading...")
+
+        val downloadTimeoutMs = 15 * 60_000L // 15 minutes
+        try {
+            withTimeout(downloadTimeoutMs) {
+                coroutineScope {
+                    val downloadJob = launch { modelManager.downloadModel(model) }
+                    // Poll directory size for live progress while download runs
+                    launch {
+                        while (downloadJob.isActive) {
+                            delay(4_000)
+                            if (!downloadJob.isActive) break
+                            val got = directorySize(modelsDir)
+                            if (expectedBytes > 0) {
+                                val pct = (got * 100L / expectedBytes).coerceIn(0, 100)
+                                val gotMb = got / 1_000_000
+                                val totalMb = expectedBytes / 1_000_000
+                                println("    ... ${gotMb}MB / ${totalMb}MB ($pct%)")
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            throw RuntimeException("Failed to download model '$model': ${e.message}", e)
+        }
+
+        println("  ✓ $model — download complete")
+        return false
     }
 
     private suspend fun warmup(lm: CactusLM, modelSlug: String) {
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
+        val warmupSystem = Prompts.systemPromptForModel(modelSlug)
         val result = withTimeout(AIConfig.timeoutMsForModel(modelSlug)) {
+            val messages = buildList {
+                if (warmupSystem != null) add(ChatMessage(content = warmupSystem, role = "system"))
+                add(ChatMessage(content = Prompts.buildUserPrompt("remind me to drink water", today, modelSlug), role = "user"))
+            }
             lm.generateCompletion(
-                messages = listOf(
-                    ChatMessage(content = Prompts.systemPromptForModel(modelSlug), role = "system"),
-                    ChatMessage(content = Prompts.buildUserPrompt("remind me to drink water", today, modelSlug), role = "user"),
-                ),
+                messages = messages,
                 params = CactusCompletionParams(
                     maxTokens = AIConfig.MAX_TOKENS_SHORT_INPUT,
                     temperature = AIConfig.TEMPERATURE,

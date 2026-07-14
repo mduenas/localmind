@@ -4,6 +4,7 @@ import com.markduenas.localmind.domain.model.Task
 import com.markduenas.localmind.domain.model.TaskStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.datetime.LocalDate
 
 class FakeTaskRepository : TaskRepository {
 
@@ -39,4 +40,9 @@ class FakeTaskRepository : TaskRepository {
     }
 
     override fun searchTasks(query: String): Flow<List<Task>> = _tasks
+
+    override fun getTasksByDateRange(start: LocalDate, end: LocalDate): Flow<List<Task>> =
+        MutableStateFlow(_tasks.value.filter { task ->
+            task.dueDate?.let { it >= start && it <= end } ?: false
+        })
 }

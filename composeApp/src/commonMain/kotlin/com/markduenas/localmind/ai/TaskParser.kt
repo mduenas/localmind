@@ -9,7 +9,7 @@ import kotlinx.datetime.todayIn
 data class ParseOutput(val capture: ParsedCapture, val log: InferenceLog)
 data class LLMParseException(
     val model: String,
-    val systemPrompt: String,
+    val systemPrompt: String?,
     val userPrompt: String,
     val rawResponse: String,
     val durationMs: Long,

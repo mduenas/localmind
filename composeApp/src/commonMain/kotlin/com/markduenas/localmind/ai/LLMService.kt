@@ -50,23 +50,24 @@ class LLMService(
     }
 
     suspend fun generateCompletion(
-        systemPrompt: String,
+        systemPrompt: String?,
         userPrompt: String,
         maxTokens: Int = AIConfig.MAX_TOKENS_MEDIUM_INPUT,
     ): String {
         val lm = cactusLM ?: throw IllegalStateException("LLM not initialized — call initialize() first")
 
-        val messages = listOf(
-            ChatMessage(content = systemPrompt, role = "system"),
-            ChatMessage(content = userPrompt, role = "user")
-        )
+        val messages = buildList {
+            if (systemPrompt != null) add(ChatMessage(content = systemPrompt, role = "system"))
+            add(ChatMessage(content = userPrompt, role = "user"))
+        }
 
         val result = withTimeout(AIConfig.timeoutMsForModel(loadedModel)) {
             lm.generateCompletion(
                 messages = messages,
                 params = CactusCompletionParams(
                     maxTokens = maxTokens,
-                    temperature = AIConfig.TEMPERATURE
+                    temperature = AIConfig.TEMPERATURE,
+                    stopSequences = listOf("}")
                 )
             )
         }
@@ -75,7 +76,9 @@ class LLMService(
             throw LLMException("LLM completion failed")
         }
 
-        return result.response ?: throw LLMException("LLM returned empty response")
+        // stopSequences strips the closing brace — reappend it so JSON parsing succeeds
+        val raw = result.response ?: throw LLMException("LLM returned empty response")
+        return if (raw.trimEnd().endsWith("}")) raw else "$raw}"
     }
 
     fun unload() {

@@ -8,9 +8,9 @@ class BenchmarkFixturesTest {
     @Test
     fun fixtureHasExpectedDistribution() {
         val suite = BenchmarkFixtures.suite
-        assertEquals("v1.0.0", suite.suiteVersion)
-        assertEquals(20, suite.prompts.size)
-        assertEquals(10, suite.prompts.count { it.type == "task" })
-        assertEquals(10, suite.prompts.count { it.type == "note" })
+        assertEquals("v2.0.0", suite.suiteVersion)
+        assertEquals(200, suite.prompts.size)
+        assertEquals(100, suite.prompts.count { it.type == "task" })
+        assertEquals(100, suite.prompts.count { it.type == "note" })
     }
 }

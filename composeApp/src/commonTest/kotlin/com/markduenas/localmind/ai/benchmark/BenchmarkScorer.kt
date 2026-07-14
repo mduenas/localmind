@@ -221,10 +221,20 @@ object BenchmarkScorer {
             "TODAY_PLUS_1" -> actual == today.plus(1, DateTimeUnit.DAY)
             "TODAY_PLUS_2" -> actual == today.plus(2, DateTimeUnit.DAY)
             "TODAY_PLUS_3" -> actual == today.plus(3, DateTimeUnit.DAY)
+            "TODAY_PLUS_7" -> actual == today.plus(7, DateTimeUnit.DAY)
             "TODAY_PLUS_14" -> actual == today.plus(14, DateTimeUnit.DAY)
+            "TODAY_PLUS_30" -> actual == today.plus(30, DateTimeUnit.DAY)
             "THIS_WEEKEND_SATURDAY" -> actual.dayOfWeek == DayOfWeek.SATURDAY
             "NEXT_WEEK_MONDAY" -> actual.dayOfWeek == DayOfWeek.MONDAY && actual > today
+            "MONTH_DAY_01_15" -> actual.month == Month.JANUARY && actual.day == 15
+            "MONTH_DAY_02_14" -> actual.month == Month.FEBRUARY && actual.day == 14
             "MONTH_DAY_03_20" -> actual.month == Month.MARCH && actual.day == 20
+            "MONTH_DAY_04_15" -> actual.month == Month.APRIL && actual.day == 15
+            "MONTH_DAY_06_01" -> actual.month == Month.JUNE && actual.day == 1
+            "MONTH_DAY_07_04" -> actual.month == Month.JULY && actual.day == 4
+            "MONTH_DAY_09_15" -> actual.month == Month.SEPTEMBER && actual.day == 15
+            "MONTH_DAY_10_31" -> actual.month == Month.OCTOBER && actual.day == 31
+            "MONTH_DAY_12_25" -> actual.month == Month.DECEMBER && actual.day == 25
             else -> false
         }
     }

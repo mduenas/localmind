@@ -12,7 +12,10 @@ object AIConfig {
     const val MAX_TOKENS_LONG_INPUT = 224
     const val MAX_TOKENS_RETRY = 144
     const val TEMPERATURE = 0.0
-    const val CONTEXT_SIZE = 2048
+    // Max prompt+output is ~420 tokens after prompt slimming. 512 covers that with headroom.
+    // Previously 2048 — reducing this lowers KV cache RAM and speeds up model init.
+    const val CONTEXT_SIZE = 512
+    // MAX_TOKENS: output JSON is ~50-80 tokens max. Recommended: SHORT=80, MEDIUM=100, LONG=120, RETRY=128
 
     // Performance budgets
     const val LLM_TIMEOUT_MS = 20_000L
@@ -24,6 +27,7 @@ object AIConfig {
             slug.startsWith("qwen3-") -> LARGE_MODEL_TIMEOUT_MS
             slug.startsWith("qwen2.5-") -> LARGE_MODEL_TIMEOUT_MS
             slug.startsWith("llama3.") -> LARGE_MODEL_TIMEOUT_MS
+            slug == "gemma3-1b" -> LARGE_MODEL_TIMEOUT_MS
             else -> LLM_TIMEOUT_MS
         }
     }
@@ -32,6 +36,7 @@ object AIConfig {
     val MODEL_SIZES = mapOf(
         TINY_LLM_MODEL to "~200 MB",
         FUNCTION_TINY_LLM_MODEL to "~400 MB",
+        "gemma3-1b" to "~700 MB",
     )
 
     // STT model slugs — no longer used (platform-native speech recognition)
@@ -41,5 +46,6 @@ object AIConfig {
     val MODEL_BYTES = mapOf(
         TINY_LLM_MODEL to 200_000_000L,
         FUNCTION_TINY_LLM_MODEL to 400_000_000L,
+        "gemma3-1b" to 700_000_000L,
     )
 }
