@@ -82,7 +82,7 @@ All of this already exists in `fastlane/metadata/android/en-US/` and is ready to
 > Welcome to LocalMind — capture tasks and notes by voice or text, and let on-device AI structure them instantly. Fully offline, fully private, no account required.
 
 **Graphics status:**
-- ✅ Phone screenshots (8, in `images/phoneScreenshots/`)
+- ✅ Phone screenshots (9, real captures at 1080×2400 in `images/phoneScreenshots/` — replaced the old 461×1000 placeholders)
 - ✅ Hi-res icon (`images/icon.png`, just added)
 - ❌ Feature graphic — missing (Blocker #4)
 - ⬜ 7"/10" tablet screenshots — optional, currently empty (`.gitkeep` only)
@@ -136,8 +136,8 @@ Also already drafted in `fastlane/metadata/ios/en-US/`.
 > Welcome to LocalMind — capture tasks and notes by voice or text, and let on-device AI structure them instantly. Fully offline, fully private, no account required.
 
 **Graphics status:**
-- ✅ Screenshots exist for one device size (`fastlane/metadata/ios/en-US/screenshots/`, 9 images)
-- ⚠️ Check these match a *required* size — App Store requires specific pixel dimensions per device class (see `SCREENSHOTS.md`: 6.7", 6.5", and iPad Pro 12.9" if iPad is supported). If your captured screenshots are only one size, App Store Connect can usually auto-scale from the largest required size (6.7") to smaller ones, but verify at upload time.
+- ✅ Screenshots (9, real captures at exactly 1290×2796 — the required 6.7"/iPhone 15 Pro Max size — in `fastlane/metadata/ios/en-US/screenshots/`, replaced the old 461×1000 placeholders)
+- ⚠️ Only the 6.7" size is captured. App Store Connect can often auto-scale from the largest size (6.7") to smaller required sizes (6.5", 5.5", iPad), but verify at upload time whether additional sizes are still required — see `SCREENSHOTS.md`.
 
 ---
 

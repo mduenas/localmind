@@ -2,6 +2,18 @@
 
 Screenshots must be captured on real devices or emulators at the required resolutions.
 
+**Status: done.** Real screenshots (not mockups) exist for both platforms in
+`images/phoneScreenshots/` (Android, 1080x2400) and `screenshots/` (iOS, 1290x2796),
+captured on a Pixel 9 Pro emulator and an iPhone 15 Pro Max simulator respectively,
+using the sample data below.
+
+**Note on screen #4:** the original plan called for a "Parse Review" screenshot
+(AI parsing result with confidence score). That screen is no longer part of the
+default capture flow — the Phase 1 instant-capture redesign made classification
+happen instantly in the background with no mandatory review step, so ParseReview
+is now unreachable from normal navigation. Screen #4 was replaced with the
+**Calendar** view instead, which is a real, current, user-facing feature.
+
 ## Android (Google Play)
 
 ### Required Sizes
@@ -9,15 +21,22 @@ Screenshots must be captured on real devices or emulators at the required resolu
 - **7" Tablet**: 1200x1920 — optional but recommended
 - **10" Tablet**: 1600x2560 — optional but recommended
 
-### Recommended Screenshots (in order)
+### Screenshots (in order)
 1. **Today View** — Task list with a few sample tasks showing priorities and due dates
 2. **Quick Capture** — Text input screen with example text being entered
-3. **Voice Capture** — Voice recording screen with waveform visualization
-4. **Parse Review** — AI parsing result showing extracted task with confidence score
-5. **Settings / Premium** — Settings screen showing premium status section
+3. **Voice Capture** — Voice recording screen (Android: idle "Tap to speak" state,
+   since the emulator's on-device speech recognizer doesn't function; iOS: real
+   "Listening..." state, since the simulator's speech recognition works)
+4. **Calendar** — Month view with color-coded priority dots (replaces Parse Review, see above)
+5. **Settings** — Settings screen, free plan
 6. **Paywall** — Premium upgrade bottom sheet with feature list
 7. **Notes** — Note list view with sample notes
 8. **Upcoming Tasks** — Upcoming view with tasks grouped by date
+9. **Settings / Premium** — Settings screen showing premium status section (Android:
+   real "All features unlocked" state, set via a local debug override; iOS: same
+   free-plan screenshot as #5 reused — StoreKit sandbox reconciliation resets a
+   manually-set premium flag on relaunch, so a clean premium shot needs either a
+   real sandbox purchase or a temporary code patch, neither done here)
 
 ### Feature Graphic
 - **Size**: 1024x500 PNG
@@ -26,13 +45,17 @@ Screenshots must be captured on real devices or emulators at the required resolu
 ## iOS (App Store)
 
 ### Required Sizes
-- **6.7" (iPhone 15 Pro Max)**: 1290x2796 — required
-- **6.5" (iPhone 14 Plus)**: 1284x2778 — required
-- **5.5" (iPhone 8 Plus)**: 1242x2208 — required if supporting older devices
-- **iPad Pro 12.9"**: 2048x2732 — required if iPad supported
+- **6.7" (iPhone 15 Pro Max)**: 1290x2796 — required, **done** (in `screenshots/`)
+- **6.5" (iPhone 14 Plus)**: 1284x2778 — required unless App Store Connect auto-scales from 6.7", **not yet captured**
+- **5.5" (iPhone 8 Plus)**: 1242x2208 — required if supporting older devices, **not yet captured**
+- **iPad Pro 12.9"**: 2048x2732 — required if iPad supported, **not yet captured**
 
-### Recommended Screenshots (in order)
-Same as Android list above. Apple allows up to 10 per device size.
+Verify at upload time in App Store Connect whether the 6.7" set is sufficient or
+whether additional device sizes are still required — this changes periodically as
+Apple's device lineup changes.
+
+### Screenshots (in order)
+Same as Android list above.
 
 ## Capture Instructions
 
@@ -44,4 +67,7 @@ Same as Android list above. Apple allows up to 10 per device size.
    - "Submit quarterly report by Friday high priority" (high priority task)
    - "Interesting idea about neural networks and creativity" (note)
 3. Capture each screen in the order listed above
-4. Place files in the corresponding `images/phoneScreenshots/` directory named `01_today.png`, `02_capture.png`, etc.
+4. Place files named `01_today.png`, `02_text_capture.png`, `03_voice_capture.png`,
+   `04_calendar.png`, `05_settings.png`, `06_paywall.png`, `07_notes.png`,
+   `08_upcoming.png`, `09_settings_premium.png` in `images/phoneScreenshots/`
+   (Android) or `screenshots/` (iOS).
