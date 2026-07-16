@@ -21,9 +21,9 @@
 
 | Phase | Dates | Lifetime | Monthly |
 |-------|-------|----------|---------|
-| **Launch Intro** | 2026-03-15 to 2026-05-31 | $24.99 | $3.99 |
-| **Standard** | 2026-06-01 to 2026-09-30 | $29.99 | $4.99 |
-| **Mature** | 2026-10-01 onward | $34.99 | $5.99 |
+| **Launch Intro** | 2026-07-16 to 2026-10-01 | $24.99 | $3.99 |
+| **Standard** | 2026-10-02 to 2027-01-31 | $29.99 | $4.99 |
+| **Mature** | 2027-02-01 onward | $34.99 | $5.99 |
 
 Use local midnight in each store region when scheduling automatic price changes.
 
@@ -59,8 +59,8 @@ Use local midnight in each store region when scheduling automatic price changes.
 ### 2b. Schedule Play Price Changes
 1. In each product/base plan, open **Price > Schedule new price**
 2. Add:
-   - 2026-06-01: lifetime $29.99, monthly $4.99
-   - 2026-10-01: lifetime $34.99, monthly $5.99
+   - 2026-10-02: lifetime $29.99, monthly $4.99
+   - 2027-02-01: lifetime $34.99, monthly $5.99
 3. Enable rollout to all regions (or custom regional overrides)
 
 ### 3. Licensing Testing
@@ -105,8 +105,8 @@ Use local midnight in each store region when scheduling automatic price changes.
 
 ### 2b. Schedule App Store Price Changes
 1. Open each IAP/subscription and add scheduled price changes:
-   - 2026-06-01: Tier 30 ($29.99) and Tier 5 ($4.99)
-   - 2026-10-01: Tier 35 ($34.99) and Tier 6 ($5.99)
+   - 2026-10-02: Tier 30 ($29.99) and Tier 5 ($4.99)
+   - 2027-02-01: Tier 35 ($34.99) and Tier 6 ($5.99)
 2. Confirm preserving price for existing subscribers is **off** for monthly plan.
 
 ### 3. Sandbox Testing
@@ -143,5 +143,5 @@ These IDs **must match exactly** between the code and both store consoles.
 
 Schedule rationale:
 - Lower launch prices reduce purchase friction while early reviews accumulate.
-- First lift at 2026-06-01 aligns with post-launch validation window.
-- Second lift at 2026-10-01 aligns with mature feature set and higher perceived value.
+- First lift at 2026-10-02 aligns with post-launch validation window.
+- Second lift at 2027-02-01 aligns with mature feature set and higher perceived value.
