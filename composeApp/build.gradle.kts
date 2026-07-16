@@ -109,8 +109,16 @@ android {
         applicationId = "com.markduenas.localmind"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 49
+        versionCode = 50
         versionName = "1.0.40"
+
+        ndk {
+            // JNA 5.13.0's armeabi-v7a/x86/x86_64 libjnidispatch.so are 4KB-page
+            // aligned, which Play Console flags as a blocking 16KB page-size
+            // error. arm64-v8a's copy is correctly 16KB-aligned, so restrict to
+            // that ABI rather than waiting on an upstream JNA fix.
+            abiFilters += "arm64-v8a"
+        }
     }
 
     signingConfigs {
