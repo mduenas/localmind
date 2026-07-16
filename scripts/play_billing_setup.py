@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Google Play Developer API helper for LocalMind's IAP setup.
 
-Creates/updates the `premium_lifetime` managed product and the
-`premium_monthly` subscription + `monthly` base plan described in
+Creates/updates the `premium_lifetime` one-time product (via
+monetization.onetimeproducts -- the legacy inappproducts endpoint returns
+403 "Please migrate to the new publishing API" on this account) and the
+`premium_monthly` subscription base plan, per
 fastlane/metadata/BILLING_SETUP.md.
 
 IMPORTANT: the Play Developer API has no field for scheduling a future
@@ -18,10 +20,21 @@ either:
 
 Requires: pip install google-api-python-client google-auth
 
-Field names for the monetization.subscriptions resource have changed across
-API versions -- verify against the current Play Developer API reference
-(https://developers.google.com/android-publisher) before relying on this
-in production.
+The service account also needs write permission granted in Play Console
+(Users and permissions) beyond the default deploy role -- read calls (`show`)
+can succeed with a reporting-only role while writes (`set-price`,
+`create-*`) 403 until "Manage store presence" / monetization edit access is
+granted explicitly.
+
+MONTHLY_BASE_PLAN_ID and LIFETIME_PURCHASE_OPTION_ID below must match the
+IDs already live in Play Console -- they are arbitrary strings set at
+creation time, not derived from the product SKU. Run `show` first to check.
+
+REGIONS_VERSION must match the regionsVersion Play already has on file for
+the product (visible in a onetimeproducts `show`; not present on the
+subscriptions resource, so use the same value for both). Guessing an old
+version causes currency-mismatch 400s as Play's regional currency mappings
+change over time (e.g. Bulgaria's BGN -> EUR transition).
 
 Usage:
   export GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH=/path/to/key.json
@@ -47,10 +60,18 @@ SCOPES = ["https://www.googleapis.com/auth/androidpublisher"]
 
 LIFETIME_SKU = "premium_lifetime"
 MONTHLY_SKU = "premium_monthly"
-MONTHLY_BASE_PLAN_ID = "monthly"
+# These must match the IDs already live in Play Console -- check with `show`
+# before assuming a value; they are not auto-derived from the SKU name.
+MONTHLY_BASE_PLAN_ID = "localminder-premium"
+LIFETIME_PURCHASE_OPTION_ID = "premium-lifetime"
 
 DEFAULT_REGION = "US"
 DEFAULT_CURRENCY = "USD"
+# Regions/currencies snapshot version Play expects on regional pricing configs.
+# Must match the regionsVersion already on the existing product/subscription --
+# check via `show` before assuming a value. See
+# https://support.google.com/googleplay/android-developer/answer/10532353
+REGIONS_VERSION = "2025/03"
 
 
 def get_service_account_path() -> str:
@@ -79,33 +100,62 @@ def build_client():
     return build("androidpublisher", "v3", credentials=creds)
 
 
+def money(price_cents: int) -> dict:
+    return {
+        "currencyCode": DEFAULT_CURRENCY,
+        "units": str(price_cents // 100),
+        "nanos": (price_cents % 100) * 10_000_000,
+    }
+
+
 def create_lifetime(service, package_name: str, price_cents: int) -> None:
+    """Create/update the lifetime one-time product via the current
+    monetization.onetimeproducts API (the legacy inappproducts endpoint
+    returns 403 "Please migrate to the new publishing API" on this account).
+    """
     body = {
         "packageName": package_name,
-        "sku": LIFETIME_SKU,
-        "status": "active",
-        "purchaseType": "managedUser",
-        "defaultLanguage": "en-US",
-        "defaultPrice": {
-            "priceMicros": str(price_cents * 10_000),
-            "currency": DEFAULT_CURRENCY,
-        },
-        "listings": {
-            "en-US": {
+        "productId": LIFETIME_SKU,
+        "listings": [
+            {
+                "languageCode": "en-US",
                 "title": "LocalMind Premium (Lifetime)",
                 "description": (
                     "Unlock on-device AI parsing, JSON export, and all "
                     "future premium features with a one-time purchase."
                 ),
             }
-        },
+        ],
+        "purchaseOptions": [
+            {
+                "purchaseOptionId": LIFETIME_PURCHASE_OPTION_ID,
+                "state": "ACTIVE",
+                "buyOption": {
+                    "legacyCompatible": True,
+                },
+                "regionalPricingAndAvailabilityConfigs": [
+                    {
+                        "regionCode": DEFAULT_REGION,
+                        "price": money(price_cents),
+                        "availability": "AVAILABLE",
+                    }
+                ],
+            }
+        ],
     }
     result = (
-        service.inappproducts()
-        .insert(packageName=package_name, body=body)
+        service.monetization()
+        .onetimeproducts()
+        .patch(
+            packageName=package_name,
+            productId=LIFETIME_SKU,
+            allowMissing=True,
+            regionsVersion_version=REGIONS_VERSION,
+            body=body,
+        )
         .execute()
     )
-    print(f"Created in-app product: {result.get('sku')}")
+    print(f"Created/updated one-time product: {result.get('productId')}")
 
 
 def create_subscription(service, package_name: str, price_cents: int) -> None:
@@ -147,7 +197,12 @@ def create_subscription(service, package_name: str, price_cents: int) -> None:
     result = (
         service.monetization()
         .subscriptions()
-        .create(packageName=package_name, productId=MONTHLY_SKU, body=body)
+        .create(
+            packageName=package_name,
+            productId=MONTHLY_SKU,
+            regionsVersion_version=REGIONS_VERSION,
+            body=body,
+        )
         .execute()
     )
     print(f"Created subscription: {result.get('productId')}")
@@ -156,17 +211,27 @@ def create_subscription(service, package_name: str, price_cents: int) -> None:
 def set_price(service, package_name: str, product: str, price_cents: int) -> None:
     if product == "lifetime":
         existing = (
-            service.inappproducts()
-            .get(packageName=package_name, sku=LIFETIME_SKU)
+            service.monetization()
+            .onetimeproducts()
+            .get(packageName=package_name, productId=LIFETIME_SKU)
             .execute()
         )
-        existing["defaultPrice"] = {
-            "priceMicros": str(price_cents * 10_000),
-            "currency": DEFAULT_CURRENCY,
-        }
+        for purchase_option in existing.get("purchaseOptions", []):
+            if purchase_option.get("purchaseOptionId") != LIFETIME_PURCHASE_OPTION_ID:
+                continue
+            for regional_config in purchase_option.get("regionalPricingAndAvailabilityConfigs", []):
+                if regional_config.get("regionCode") == DEFAULT_REGION:
+                    regional_config["price"] = money(price_cents)
         result = (
-            service.inappproducts()
-            .update(packageName=package_name, sku=LIFETIME_SKU, body=existing)
+            service.monetization()
+            .onetimeproducts()
+            .patch(
+                packageName=package_name,
+                productId=LIFETIME_SKU,
+                updateMask="purchaseOptions",
+                regionsVersion_version=REGIONS_VERSION,
+                body=existing,
+            )
             .execute()
         )
         print(f"Updated {LIFETIME_SKU} price to {price_cents / 100:.2f} {DEFAULT_CURRENCY}")
@@ -196,6 +261,7 @@ def set_price(service, package_name: str, product: str, price_cents: int) -> Non
                 packageName=package_name,
                 productId=MONTHLY_SKU,
                 updateMask="basePlans",
+                regionsVersion_version=REGIONS_VERSION,
                 body=existing,
             )
             .execute()
@@ -209,8 +275,9 @@ def set_price(service, package_name: str, product: str, price_cents: int) -> Non
 def show(service, package_name: str, product: str) -> None:
     if product == "lifetime":
         result = (
-            service.inappproducts()
-            .get(packageName=package_name, sku=LIFETIME_SKU)
+            service.monetization()
+            .onetimeproducts()
+            .get(packageName=package_name, productId=LIFETIME_SKU)
             .execute()
         )
     elif product == "monthly":
