@@ -137,7 +137,8 @@ Also already drafted in `fastlane/metadata/ios/en-US/`.
 
 **Graphics status:**
 - ✅ Screenshots (9, real captures at exactly 1290×2796 — the required 6.7"/iPhone 15 Pro Max size — in `fastlane/metadata/ios/en-US/screenshots/`, replaced the old 461×1000 placeholders)
-- ⚠️ Only the 6.7" size is captured. App Store Connect can often auto-scale from the largest size (6.7") to smaller required sizes (6.5", 5.5", iPad), but verify at upload time whether additional sizes are still required — see `SCREENSHOTS.md`.
+- ✅ iPad Pro 12.9" screenshots (9 at exactly 2048×2732 in `fastlane/metadata/ios/en-US/ipadProScreenshots/`)
+- ⚠️ 6.5"/5.5" phone sizes not separately captured. App Store Connect can often auto-scale from 6.7"; verify at upload time — see `SCREENSHOTS.md`.
 
 ---
 
