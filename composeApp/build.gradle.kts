@@ -16,6 +16,18 @@ plugins {
     alias(libs.plugins.paparazzi)
 }
 
+// Version from root version.properties (CI can override -PversionCode / -PversionName)
+val versionPropertiesFile = rootProject.file("version.properties")
+val versionProperties = Properties()
+if (versionPropertiesFile.exists()) {
+    versionProperties.load(versionPropertiesFile.inputStream())
+}
+val ciVersionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull()
+val ciVersionName = project.findProperty("versionName")?.toString()
+val appVersionCode = ciVersionCode ?: versionProperties.getProperty("versionCode", "1").toInt()
+val appVersionName = ciVersionName ?: versionProperties.getProperty("versionName", "1.0")
+
+
 sqldelight {
     databases {
         create("LocalMindDb") {
@@ -109,9 +121,8 @@ android {
         applicationId = "com.markduenas.localmind"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 51
-        versionName = "1.0.40"
-
+        versionCode = appVersionCode
+        versionName = appVersionName
         ndk {
             // JNA 5.13.0's armeabi-v7a/x86/x86_64 libjnidispatch.so are 4KB-page
             // aligned, which Play Console flags as a blocking 16KB page-size
