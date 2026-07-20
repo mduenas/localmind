@@ -32,7 +32,10 @@ class CaptureViewModel(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        CaptureUiState(defaultToTextCapture = settingsRepository.defaultToTextCapture.value)
+        CaptureUiState(
+            defaultToTextCapture = settingsRepository.defaultToTextCapture.value ||
+                !speechService.isAvailable(),
+        )
     )
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
     private val _captured = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -93,6 +96,13 @@ class CaptureViewModel(
     }
 
     private fun startListening() {
+        if (!speechService.isAvailable()) {
+            _uiState.update {
+                it.copy(error = "Voice input isn't set up on this device. Use text capture instead.")
+            }
+            return
+        }
+
         if (!permissionHelper.hasMicrophonePermission() || !permissionHelper.hasSpeechRecognitionPermission()) {
             _uiState.update { it.copy(needsSpeechPermission = true) }
             return

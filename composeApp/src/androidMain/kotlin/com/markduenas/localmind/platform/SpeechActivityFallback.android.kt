@@ -1,6 +1,7 @@
 package com.markduenas.localmind.platform
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,7 +30,11 @@ actual fun SpeechActivityFallbackEffect(speechService: SpeechRecognitionService)
 
     LaunchedEffect(pendingIntent) {
         pendingIntent?.let { intent ->
-            launcher.launch(intent)
+            try {
+                launcher.launch(intent)
+            } catch (_: ActivityNotFoundException) {
+                speechService.onActivityLaunchFailed()
+            }
         }
     }
 }

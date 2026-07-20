@@ -32,6 +32,10 @@ actual class SpeechRecognitionService {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest? = null
     private var recognitionTask: SFSpeechRecognitionTask? = null
 
+    actual fun isAvailable(): Boolean {
+        return SFSpeechRecognizer()?.isAvailable() ?: false
+    }
+
     actual fun startListening() {
         // Reset previous state
         cancel()

@@ -42,6 +42,15 @@ actual class SpeechRecognitionService(
         private const val LANGUAGE_UNAVAILABLE_RETRY_DELAY_MS = 400L
     }
 
+    /**
+     * Checked before starting so a device with no working recognizer (common on
+     * a fresh install with no on-device language pack and no third-party voice
+     * input app) degrades gracefully instead of hitting a dead-end error.
+     */
+    actual fun isAvailable(): Boolean {
+        return SpeechRecognizer.isRecognitionAvailable(context) || findRecognitionService() != null
+    }
+
     private fun findRecognitionService(): ComponentName? {
         val intent = Intent(RecognitionService.SERVICE_INTERFACE)
         val services = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -149,7 +158,11 @@ actual class SpeechRecognitionService(
                             SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
                             SpeechRecognizer.ERROR_SERVER -> "Server error"
                             SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
-                            else -> "Voice recognition failed — try again or use text capture"
+                            SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED,
+                            SpeechRecognizer.ERROR_CANNOT_CHECK_SUPPORT,
+                            ->
+                                "Voice input isn't set up on this device. Use text capture instead."
+                            else -> "Voice recognition failed. Use text capture instead."
                         }
                         _result.value = SpeechResult(
                             text = _result.value.text,
@@ -217,6 +230,19 @@ actual class SpeechRecognitionService(
         if (!text.isNullOrBlank()) {
             _result.value = SpeechResult(text = text, isFinal = true)
         }
+        _isListening.value = false
+    }
+
+    /**
+     * Called by the UI when launching the fallback recognition activity itself
+     * fails (e.g. ActivityNotFoundException on a device with no voice-input app).
+     */
+    fun onActivityLaunchFailed() {
+        pendingRecognitionIntent.value = null
+        _result.value = SpeechResult(
+            isFinal = true,
+            error = "Voice input isn't available on this device. Use text capture instead.",
+        )
         _isListening.value = false
     }
 

@@ -12,6 +12,9 @@ expect class SpeechRecognitionService {
     val result: StateFlow<SpeechResult>
     val isListening: StateFlow<Boolean>
 
+    /** Whether this device has a usable speech recognizer, checked before starting. */
+    fun isAvailable(): Boolean
+
     fun startListening()
     fun stopListening()
     fun cancel()
