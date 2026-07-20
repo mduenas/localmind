@@ -36,6 +36,10 @@ actual class SpeechRecognitionService {
         return SFSpeechRecognizer()?.isAvailable() ?: false
     }
 
+    actual fun unavailableResult(): SpeechResult {
+        return SpeechResult(isFinal = true, error = "Speech recognition isn't available on this device.")
+    }
+
     actual fun startListening() {
         // Reset previous state
         cancel()

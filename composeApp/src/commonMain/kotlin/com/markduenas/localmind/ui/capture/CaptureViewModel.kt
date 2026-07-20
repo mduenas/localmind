@@ -20,6 +20,8 @@ data class CaptureUiState(
     val inputText: String = "",
     val isRecording: Boolean = false,
     val error: String? = null,
+    val errorActionLabel: String? = null,
+    val errorActionUrl: String? = null,
     val needsSpeechPermission: Boolean = false,
     val defaultToTextCapture: Boolean = false,
 )
@@ -59,7 +61,13 @@ class CaptureViewModel(
                     submit(result.text.trim())
                 }
                 result.error?.let { error ->
-                    _uiState.update { it.copy(error = error) }
+                    _uiState.update {
+                        it.copy(
+                            error = error,
+                            errorActionLabel = result.errorActionLabel,
+                            errorActionUrl = result.errorActionUrl,
+                        )
+                    }
                 }
             }
         }
@@ -97,8 +105,13 @@ class CaptureViewModel(
 
     private fun startListening() {
         if (!speechService.isAvailable()) {
+            val unavailable = speechService.unavailableResult()
             _uiState.update {
-                it.copy(error = "Voice input isn't set up on this device. Use text capture instead.")
+                it.copy(
+                    error = unavailable.error,
+                    errorActionLabel = unavailable.errorActionLabel,
+                    errorActionUrl = unavailable.errorActionUrl,
+                )
             }
             return
         }
@@ -108,7 +121,7 @@ class CaptureViewModel(
             return
         }
 
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, errorActionLabel = null, errorActionUrl = null) }
         speechService.startListening()
     }
 
@@ -122,7 +135,7 @@ class CaptureViewModel(
     }
 
     fun clearError() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, errorActionLabel = null, errorActionUrl = null) }
     }
 
     override fun onCleared() {

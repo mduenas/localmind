@@ -40,6 +40,10 @@ actual class SpeechRecognitionService(
     private companion object {
         private const val MAX_LANGUAGE_UNAVAILABLE_RETRIES = 1
         private const val LANGUAGE_UNAVAILABLE_RETRY_DELAY_MS = 400L
+        private const val PLAY_STORE_VOICE_APP_SEARCH_URL =
+            "https://play.google.com/store/search?q=voice%20input&c=apps"
+        private const val SPEECH_PREFS_NAME = "speech_recognition_prefs"
+        private const val KEY_MODEL_DOWNLOAD_TRIGGERED = "model_download_triggered"
     }
 
     /**
@@ -49,6 +53,51 @@ actual class SpeechRecognitionService(
      */
     actual fun isAvailable(): Boolean {
         return SpeechRecognizer.isRecognitionAvailable(context) || findRecognitionService() != null
+    }
+
+    actual fun unavailableResult(): SpeechResult {
+        return SpeechResult(
+            isFinal = true,
+            error = "No voice input app is set up on this device.",
+            errorActionLabel = "Get one",
+            errorActionUrl = PLAY_STORE_VOICE_APP_SEARCH_URL,
+        )
+    }
+
+    private fun canLaunchRecognitionActivity(): Boolean {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+            )
+        }
+        return intent.resolveActivity(context.packageManager) != null
+    }
+
+    /**
+     * Asks Android to download its own on-device speech model (API 33+) rather
+     * than bundling one ourselves -- this fixes the root cause of a fresh
+     * install having no language pack, using the OS/Google's own mechanism.
+     * Fires at most once per install; the download itself is async and has no
+     * completion callback via this API, so the current attempt still falls
+     * back to the recognition activity below.
+     */
+    private fun triggerModelDownloadOnce() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val prefs = context.getSharedPreferences(SPEECH_PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_MODEL_DOWNLOAD_TRIGGERED, false)) return
+        try {
+            val downloadRecognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                )
+            }
+            downloadRecognizer.triggerModelDownload(intent)
+            downloadRecognizer.destroy()
+            prefs.edit().putBoolean(KEY_MODEL_DOWNLOAD_TRIGGERED, true).apply()
+        } catch (_: Exception) {}
     }
 
     private fun findRecognitionService(): ComponentName? {
@@ -91,20 +140,23 @@ actual class SpeechRecognitionService(
                 val useOnDevice = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                     SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
 
-                recognizer = if (useOnDevice) {
-                    SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-                } else {
-                    val serviceComponent = findRecognitionService()
-                    if (serviceComponent != null) {
-                        SpeechRecognizer.createSpeechRecognizer(context, serviceComponent)
-                    } else {
-                        _result.value = SpeechResult(
-                            error = "No speech recognition service found. Install a voice input app (e.g. FUTO Voice Input).",
-                            isFinal = true,
-                        )
+                if (!useOnDevice) {
+                    // No reliable on-device recognizer on this OS/device. Rather than
+                    // bind to an arbitrary discovered RecognitionService (which has
+                    // known permission/binding issues on some ROMs), hand off directly
+                    // to the system's own recognition activity -- it handles its own
+                    // online/offline fallback internally (verified: it retries via
+                    // network recognition when the on-device model is missing), and
+                    // lets the user pick whichever voice input app they've chosen.
+                    if (!canLaunchRecognitionActivity()) {
+                        _result.value = unavailableResult()
                         return@post
                     }
+                    launchRecognitionActivity()
+                    return@post
                 }
+
+                recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
 
                 recognizer?.setRecognitionListener(object : RecognitionListener {
                     override fun onReadyForSpeech(params: Bundle?) {
@@ -135,7 +187,10 @@ actual class SpeechRecognitionService(
                         // The on-device recognizer often isn't warmed up yet on the very
                         // first call in a session and reports the language as unavailable —
                         // this is transient and normally succeeds on an immediate retry.
+                        // It can also mean the on-device language pack is missing entirely
+                        // (e.g. fresh install) -- ask Android to download it for next time.
                         if (error == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE) {
+                            triggerModelDownloadOnce()
                             if (languageUnavailableRetryCount < MAX_LANGUAGE_UNAVAILABLE_RETRIES) {
                                 languageUnavailableRetryCount++
                                 mainHandler.postDelayed(

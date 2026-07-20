@@ -20,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -31,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.markduenas.localmind.platform.SpeechActivityFallbackEffect
 import com.markduenas.localmind.platform.SpeechPermissionEffect
@@ -55,6 +57,7 @@ fun CaptureScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val speechService = koinInject<SpeechRecognitionService>()
+    val uriHandler = LocalUriHandler.current
 
     SpeechPermissionEffect(
         shouldRequest = state.needsSpeechPermission,
@@ -64,8 +67,14 @@ fun CaptureScreen(
     SpeechActivityFallbackEffect(speechService)
 
     LaunchedEffect(state.error) {
-        state.error?.let {
-            snackbarHostState.showSnackbar(it)
+        state.error?.let { error ->
+            val result = snackbarHostState.showSnackbar(
+                message = error,
+                actionLabel = state.errorActionLabel,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                state.errorActionUrl?.let { uriHandler.openUri(it) }
+            }
             viewModel.clearError()
         }
     }
