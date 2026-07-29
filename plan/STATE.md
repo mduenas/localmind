@@ -7,7 +7,7 @@ links:
 
 ## Next steps
 
-<!-- none yet -->
+- [ ] Merge or close branch mduenas/tolaria-comparison — 2 ahead / 22 behind, last commit 2026-07-28
 
 ## Notes
 
